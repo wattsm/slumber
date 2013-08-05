@@ -2,6 +2,7 @@
 
 open FsUnit
 open Xunit
+open Xunit.Extensions
 open System
 open System.IO
 open System.Web
@@ -134,6 +135,25 @@ module ``Common facts`` =
                 let request' = parseRequest request id
 
                 request'.Id |> should equal id
+
+        [<Trait (Traits.Names.Module, ModuleName)>]
+        module ``createAbsoluteUriFrom function`` = 
+
+            [<Theory>]
+            [<InlineData ("http://localhost", "api", "http://localhost/api")>]
+            [<InlineData ("http://localhost", "/api", "http://localhost/api")>]
+            [<InlineData ("http://localhost/", "api", "http://localhost/api")>]
+            [<InlineData ("http://localhost/", "/api", "http://localhost/api")>]
+            [<InlineData ("http://localhost/app", "api", "http://localhost/app/api")>]
+            [<InlineData ("http://localhost/app", "/api", "http://localhost/app/api")>]
+            [<InlineData ("http://localhost/app/", "api", "http://localhost/app/api")>]
+            [<InlineData ("http://localhost/app/", "/api", "http://localhost/app/api")>]
+            let ``Returns correct URL`` baseUrl relativeUrl expectedUrl = 
+
+                let baseUrl' = Uri (baseUrl, UriKind.Absolute)
+                let actualUrl = createAbsoluteUriFrom baseUrl' relativeUrl
+
+                actualUrl.AbsoluteUri |> should equal expectedUrl
 
         module ``Headers facts`` =
 

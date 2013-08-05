@@ -170,14 +170,30 @@ module Common =
                 Payload = (parsePayload raw);
             }
 
-        ///Creates an absolute URL given a relative URL using the current HttpContext or defaulting to localhost if none set
-        let createAbsoluteUri (relativeUrl : String) = 
-            
+        ///Creates an absolute URL from a base URL and a relative URL
+        let createAbsoluteUriFrom (baseUrl : Uri) (relativeUrl : String) = 
+
+            //NOTE That this function adds/removes slashes in the base and relative URLs. This is to 
+            //maintain expected behaviour when working with extensionless URLs. By default, for example
+            //http://localhost/app + api will result in http://localhost/api whereas the expected result is
+            //likely http://localhost/app/api.
+
             let relativeUrl' = 
                 if (relativeUrl.StartsWith "/") then
                     relativeUrl.Substring 1
                 else
                     relativeUrl
+
+            let baseUrl' = 
+                if not (baseUrl.AbsoluteUri.EndsWith "/") then
+                    Uri (baseUrl.AbsoluteUri + "/", UriKind.Absolute)
+                else
+                    baseUrl
+
+            Uri (baseUrl', relativeUrl')
+
+        ///Creates an absolute URL given a relative URL using the current HttpContext or defaulting to localhost if none set
+        let createAbsoluteUri relativeUrl = 
 
             let baseUrl = 
                 if (HttpContext.Current <> null) then
@@ -188,7 +204,7 @@ module Common =
                 else
                     Uri ("http://localhost", UriKind.Absolute)
 
-            Uri (baseUrl, relativeUrl')
+            createAbsoluteUriFrom baseUrl relativeUrl
 
         ///Contains functions for working with HTTP headers
         module Headers = 
