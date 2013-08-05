@@ -26,7 +26,7 @@ Below are the basic highlights of how Slumber works. For a more complete example
 
 Imagine a simple data model:
 
-```F#
+```fsharp
 [<DataContract (Name = "widget", Namespace = "")>]
 type Widget = {
 
