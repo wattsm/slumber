@@ -51,7 +51,7 @@ type WidgetCatalog = {
 
 And some functions for working with it:
 
-```F#
+```fsharp
 let storage = ... //Some storage mechanism, e.g. database
 
 let getWidgetCatalog () = 
@@ -64,7 +64,7 @@ let addWidget (widget : Widget) =
 
 These functions can be exposed as RESTful endpoints using Slumber:
 
-```F#
+```fsharp
 open Slumber
 open Slumber.Common.Http
 open Slumber.Common.Http.Headers
@@ -94,7 +94,7 @@ containerAt (relativeUri "/")
 
 If you want more control over status codes and response headers you can return an OperationResult from your functions.
 
-```F#
+```fsharp
 let addWidget (widget : Widget) =
   if (storage.Exists widget.Code) then
     OperationResult.StatusOnly 400
@@ -105,7 +105,7 @@ let addWidget (widget : Widget) =
 
 Similarly if you want access to URL segments, query string parameters etc. you can access them via OperationMetadata.
 
-```F#
+```fsharp
 let getWidgetCatalog (meta : OperationMetadata) = 
   
   let search = getParameter "search" meta
