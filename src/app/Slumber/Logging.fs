@@ -15,6 +15,7 @@ module Logging =
         | Info of String
         | Error of (String * Exception option)
 
+    ///Writes to the log output. Defaults to debug.
     let mutable private _write = 
         fun entry -> 
 
@@ -34,6 +35,11 @@ module Logging =
                 message
             )
 
+    ///Sets the writer used to record log entries
+    let setLogWriter writer = 
+        _write <- writer
+
+    ///Writes a log entry 
     let private log builder format =
         kprintf (builder >> _write) format
 
