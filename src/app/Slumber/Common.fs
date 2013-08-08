@@ -11,9 +11,9 @@ module Common =
         System.Threading.Thread.CurrentThread.ManagedThreadId
 
     ///Describes possible outcomes of an operation
-    type Outcome<'a, 'b> = 
-        | Success of 'a
-        | Failure of 'b
+    type Outcome<'TSuccess, 'TFailure> = 
+        | Success of 'TSuccess
+        | Failure of 'TFailure
 
     ///Converts an optional value to a Success or Failure value with the appropriate error
     let successOr error result = 
@@ -276,8 +276,8 @@ module Common =
         module Metadata = 
 
             ///Union describing the result of trying to get some metadata
-            type TryGetResult<'a> = 
-                | Found of 'a
+            type TryGetResult<'TFound> = 
+                | Found of 'TFound
                 | Missing
                 | Malformed
 
@@ -303,30 +303,30 @@ module Common =
                 >> List.tryPick (pickValue key)
 
             ///Gets a parameter as the given type
-            let getParameterAs<'a> key meta = 
+            let getParameterAs<'TResult> key meta = 
                 
                 let value = 
                     getParameter key meta
 
-                Convert.ChangeType (value, typeof<'a>) :?> 'a
+                Convert.ChangeType (value, typeof<'TResult>) :?> 'TResult
 
             ///Tries to get a parameter as a given type
-            let tryGetParameterAs<'a> key meta = 
+            let tryGetParameterAs<'TResult> key meta = 
                 match (tryGetParameter key meta) with
                 | None -> Missing
                 | Some value ->
                     try
-                        Found (Convert.ChangeType (value, typeof<'a>) :?> 'a)
+                        Found (Convert.ChangeType (value, typeof<'TResult>) :?> 'TResult)
                     with
                     | _ -> Malformed
 
             ///Gets a parameter using the given conversion
-            let getParameterUsing key (conversion : String -> 'a) =                 
+            let getParameterUsing key (conversion : String -> 'TResult) =                 
                 getParameter key
                 >> conversion
 
             ///Tries to gets a parameter using a given conversion
-            let tryGetParameterUsing key (conversion : String -> 'a) meta = 
+            let tryGetParameterUsing key (conversion : String -> 'TResult) meta = 
                 match (tryGetParameter key meta) with
                 | None -> Missing
                 | Some value ->

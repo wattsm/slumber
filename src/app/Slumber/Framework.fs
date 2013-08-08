@@ -15,8 +15,8 @@ module Framework =
         | Completed of Response
 
     ///Describes possible pipeline states
-    type State<'a> = 
-        | Running of 'a
+    type State<'TState> = 
+        | Running of 'TState
         | Stopped of StopType   
 
     ///Gets the state resulting from the execution of a function

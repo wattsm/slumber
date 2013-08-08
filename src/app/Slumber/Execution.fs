@@ -195,7 +195,7 @@ module Execution =
         }
 
     ///Runs the execution phase
-    let run<'a> : ExecutionArgs -> State<'a> = 
+    let run<'TState> : ExecutionArgs -> State<'TState> = 
         asyncRun
         >> Async.RunSynchronously
 

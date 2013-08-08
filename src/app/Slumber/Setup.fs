@@ -48,14 +48,14 @@ module Setup =
             module Helpers = 
 
                 ///Casts a message to a given type
-                let getMessageAs<'a> (context : OperationContext) = 
+                let getMessageAs<'TMessage> (context : OperationContext) = 
                     match context.Message with
                     | None -> None
-                    | Some value -> Some (value :?> 'a)
+                    | Some value -> Some (value :?> 'TMessage)
 
                 ///Calls a function with the operation message or returns the given status code
-                let withMessageOr<'a> context f statusCode = 
-                    match (context |> getMessageAs<'a>) with
+                let withMessageOr<'TMessage> context f statusCode = 
+                    match (context |> getMessageAs<'TMessage>) with
                     | None -> OperationResult.StatusOnly statusCode
                     | Some message -> f message
 
@@ -111,13 +111,13 @@ module Setup =
                             OperationResult.Empty                
                     
                     ///Creates a unit to resource operation
-                    let toResource<'r> (f : unit -> 'r) = 
+                    let toResource<'TResource> (f : unit -> 'TResource) = 
                         fun (_ : OperationContext) ->
                             f ()
                             |> OperationResult.ResourceOnly      
                     
                     ///Creates a unit to optional resource operation
-                    let toOptionalResource<'r> (f : unit -> 'r option) =     
+                    let toOptionalResource<'TResource> (f : unit -> 'TResource option) =     
                         fun (_ : OperationContext) ->
                             match (f ()) with
                             | Some resource -> OperationResult.ResourceOnly resource
@@ -136,11 +136,11 @@ module Setup =
                         inherit OperationWrapper (toUnit f)
 
                     ///A wrapper for unit to resource functions
-                    type ResourceWrapper<'r> (f : unit -> 'r) = 
+                    type ResourceWrapper<'TResource> (f : unit -> 'TResource) = 
                         inherit OperationWrapper (toResource f)
 
                     ///A wrapper for unit to optional resource functions
-                    type OptionalResourceWrapper<'r> (f : unit -> 'r option) = 
+                    type OptionalResourceWrapper<'TResource> (f : unit -> 'TResource option) = 
                         inherit OperationWrapper (toOptionalResource f)
                         
                     ///A wrapper for unit to result functions
@@ -171,33 +171,33 @@ module Setup =
                 module Functions = 
 
                     ///Creates a message to unit operation
-                    let toUnit<'m> (f : 'm -> unit) = 
+                    let toUnit<'TMessage> (f : 'TMessage -> unit) = 
                         fun context ->
-                            withMessageOr<'m>
+                            withMessageOr<'TMessage>
                             <| context
                             <| returningNothing f
                             <| StatusCodes.BadRequest
 
                     ///Creates a message to resource operation
-                    let toResource<'m, 'r> (f : 'm -> 'r) = 
+                    let toResource<'TMessage, 'TResource> (f : 'TMessage -> 'TResource) = 
                         fun context ->
-                            withMessageOr<'m>
+                            withMessageOr<'TMessage>
                             <| context
                             <| returningResource f
                             <| StatusCodes.BadRequest 
 
                     ///Creates a message to optional resource operation
-                    let toOptionalResource<'m, 'r> (f : 'm -> 'r option) = 
+                    let toOptionalResource<'TMessage, 'TResource> (f : 'TMessage -> 'TResource option) = 
                         fun context ->
-                            withMessageOr<'m>
+                            withMessageOr<'TMessage>
                             <| context
                             <| returningOptionalResource f
                             <| StatusCodes.BadRequest
 
                     ///Creates a message to operation result operation
-                    let toResult<'m> (f : 'm -> OperationResult) = 
+                    let toResult<'TMessage> (f : 'TMessage -> OperationResult) = 
                         fun context -> 
-                            withMessageOr<'m>
+                            withMessageOr<'TMessage>
                             <| context
                             <| f
                             <| StatusCodes.BadRequest
@@ -206,19 +206,19 @@ module Setup =
                 module Types = 
 
                     ///Wrapper for a message to unit function
-                    type UnitWrapper<'m> (f : 'm -> unit) =
+                    type UnitWrapper<'TMessage> (f : 'TMessage -> unit) =
                         inherit OperationWrapper (toUnit f)
 
                     ///Wrapper for a message to resource function
-                    type ResourceWrapper<'m, 'r> (f : 'm -> 'r) = 
+                    type ResourceWrapper<'TMessage, 'TResource> (f : 'TMessage -> 'TResource) = 
                         inherit OperationWrapper (toResource f)
 
                     ///Wrapper for a message to optional resource function
-                    type OptionalResourceWrapper<'m, 'r> (f : 'm -> 'r option) = 
+                    type OptionalResourceWrapper<'TMessage, 'TResource> (f : 'TMessage -> 'TResource option) = 
                         inherit OperationWrapper (toOptionalResource f)
 
                     ///Wrapper for a message to result function
-                    type ResultWrapper<'m> (f : 'm -> OperationResult) = 
+                    type ResultWrapper<'TMessage> (f : 'TMessage -> OperationResult) = 
                         inherit OperationWrapper (toResult f)
 
                 ///Functions which create wrapper types for operations accepting a message
@@ -245,55 +245,55 @@ module Setup =
                 module Functions = 
 
                     ///Creates an optional message to unit operation
-                    let toUnit<'m> (f : 'm option -> unit) = 
+                    let toUnit<'TMessage> (f : 'TMessage option -> unit) = 
                         fun (context : OperationContext) ->
 
                             context
-                            |> getMessageAs<'m>
+                            |> getMessageAs<'TMessage>
                             |> f
 
                             OperationResult.Empty
 
                     ///Creates an optional message to resource operation
-                    let toResource<'m, 'r> (f : 'm option -> 'r) = 
+                    let toResource<'TMessage, 'TResource> (f : 'TMessage option -> 'TResource) = 
                         fun context ->
                             context
-                            |> getMessageAs<'m>
+                            |> getMessageAs<'TMessage>
                             |> f
                             |> OperationResult.ResourceOnly
 
                     ///Creates an optional message to optional resource operation
-                    let toOptionalResource<'m, 'r> (f : 'm option -> 'r option) = 
+                    let toOptionalResource<'TMessage, 'TResource> (f : 'TMessage option -> 'TResource option) = 
                         fun context ->
                             context
-                            |> getMessageAs<'m>
+                            |> getMessageAs<'TMessage>
                             |> f
                             |> getOptionalResult
 
                     ///Creates an optional message to result operation
-                    let toResult<'m> (f : 'm option -> OperationResult) =
+                    let toResult<'TMessage> (f : 'TMessage option -> OperationResult) =
                         fun context ->
                             context
-                            |> getMessageAs<'m>
+                            |> getMessageAs<'TMessage>
                             |> f
 
                 [<AutoOpen>]
                 module Types = 
                 
                     ///Wraps an optional message to unit function
-                    type UnitWrapper<'m> (f : 'm option -> unit) = 
+                    type UnitWrapper<'TMessage> (f : 'TMessage option -> unit) = 
                         inherit OperationWrapper (toUnit f)
 
                     ///Wraps an optional message to resource function
-                    type ResourceWrapper<'m, 'r> (f : 'm option -> 'r) =
+                    type ResourceWrapper<'TMessage, 'TResource> (f : 'TMessage option -> 'TResource) =
                         inherit OperationWrapper (toResource f)
 
                     ///Wraps an optional message to optional resource function
-                    type OptionalResourceWrapper<'m, 'r> (f : 'm option -> 'r option) = 
+                    type OptionalResourceWrapper<'TMessage, 'TResource> (f : 'TMessage option -> 'TResource option) = 
                         inherit OperationWrapper (toOptionalResource f)
 
                     ///Wraps an optional message to result function
-                    type ResultWrapper<'m> (f : 'm option -> OperationResult) = 
+                    type ResultWrapper<'TMessage> (f : 'TMessage option -> OperationResult) = 
                         inherit OperationWrapper (toResult f)
 
                 ///Functions which create wrapper types for operations accepting an optional message
@@ -328,7 +328,7 @@ module Setup =
                             OperationResult.Empty
 
                     ///Creates a context to resource operation
-                    let toResource<'r> (f : OperationContext -> 'r) = 
+                    let toResource<'TResource> (f : OperationContext -> 'TResource) = 
                         fun context -> 
 
                             context
@@ -336,7 +336,7 @@ module Setup =
                             |> OperationResult.ResourceOnly
 
                     ///Creates a context to optional resource operation
-                    let toOptionalResource<'r> (f : OperationContext -> 'r option) = 
+                    let toOptionalResource<'TResource> (f : OperationContext -> 'TResource option) = 
                         fun context -> 
                             context
                             |> f
@@ -350,11 +350,11 @@ module Setup =
                         inherit OperationWrapper (toUnit f)
 
                     ///Wrapper for context to resource functions
-                    type ResourceWrapper<'r> (f : OperationContext -> 'r) = 
+                    type ResourceWrapper<'TResource> (f : OperationContext -> 'TResource) = 
                         inherit OperationWrapper (toResource f)
                         
                     ///Wrapper for context to optional resource functions
-                    type OptionalResourceWrapper<'r> (f : OperationContext -> 'r option) =
+                    type OptionalResourceWrapper<'TResource> (f : OperationContext -> 'TResource option) =
                         inherit OperationWrapper (toOptionalResource f)
 
                 ///Functions which create wrapper types for operations accepting an operation context
@@ -377,13 +377,13 @@ module Setup =
             [<RequireQualifiedAccess>]
             module MetadataTuple = 
 
-                type Args<'m> = 'm * OperationMetadata
+                type Args<'TMessage> = 'TMessage * OperationMetadata
 
                 [<AutoOpen>]
                 module Functions = 
 
                     ///Creates a tuple to unit operation
-                    let toUnit (f : Args<'m> -> unit) =
+                    let toUnit (f : Args<'TMessage> -> unit) =
                         fun (context : OperationContext) ->
 
                             let f' message = 
@@ -391,13 +391,13 @@ module Setup =
                                 <| f
                                 <| (message, context.Metadata)
 
-                            withMessageOr<'m>
+                            withMessageOr<'TMessage>
                             <| context
                             <| f'
                             <| StatusCodes.BadRequest
 
                     ///Creates a tuple to resource operation
-                    let toResource (f : Args<'m> -> 'r) =
+                    let toResource (f : Args<'TMessage> -> 'TResource) =
                         fun (context : OperationContext) ->
 
                             let f' message = 
@@ -405,13 +405,13 @@ module Setup =
                                 <| f
                                 <| (message, context.Metadata)
 
-                            withMessageOr<'m>
+                            withMessageOr<'TMessage>
                             <| context
                             <| f'
                             <| StatusCodes.BadRequest
 
                     ///Creates a tuple to optional resource operation
-                    let toOptionalResource (f : Args<'m> -> 'r option) = 
+                    let toOptionalResource (f : Args<'TMessage> -> 'TResource option) = 
                         fun (context : OperationContext) ->
 
                             let f' message = 
@@ -419,19 +419,19 @@ module Setup =
                                 <| f
                                 <| (message, context.Metadata)
 
-                            withMessageOr<'m>
+                            withMessageOr<'TMessage>
                             <| context
                             <| f'
                             <| StatusCodes.BadRequest
 
                     ///Creates a tuple to operation result operation
-                    let toResult (f : Args<'m> -> OperationResult) =
+                    let toResult (f : Args<'TMessage> -> OperationResult) =
                         fun (context : OperationContext) ->
                         
                             let f' message = 
                                 f (message, context.Metadata)
 
-                            withMessageOr<'m>
+                            withMessageOr<'TMessage>
                             <| context
                             <| f'
                             <| StatusCodes.BadRequest
@@ -440,19 +440,19 @@ module Setup =
                 module Types = 
 
                     ///Wrapper for tuple to unit operations
-                    type UnitWrapper<'m> (f : Args<'m> -> unit) =
+                    type UnitWrapper<'TMessage> (f : Args<'TMessage> -> unit) =
                         inherit OperationWrapper (toUnit f)
 
                     ///Wrapper for tuple to resource operations
-                    type ResourceWrapper<'m, 'r> (f : Args<'m> -> 'r) = 
+                    type ResourceWrapper<'TMessage, 'TResource> (f : Args<'TMessage> -> 'TResource) = 
                         inherit OperationWrapper (toResource f)
 
                     ///Wrapper for tuple to optional resource operations
-                    type OptionalResourceWrapper<'m, 'r> (f : Args<'m> -> 'r option) = 
+                    type OptionalResourceWrapper<'TMessage, 'TResource> (f : Args<'TMessage> -> 'TResource option) = 
                         inherit OperationWrapper (toOptionalResource f)
 
                     ///Wrapper for tuple to operation result operations
-                    type ResultWrapper<'m> (f : Args<'m> -> OperationResult) = 
+                    type ResultWrapper<'TMessage> (f : Args<'TMessage> -> OperationResult) = 
                         inherit OperationWrapper (toResult f)
 
                 ///Functions which create wrapper types for operations accepting an optional message and metadata
@@ -475,7 +475,7 @@ module Setup =
             [<RequireQualifiedAccess>]
             module OptionalMetadataTuple = 
 
-                type Args<'m> = 'm option * OperationMetadata
+                type Args<'TMessage> = 'TMessage option * OperationMetadata
 
                 let private usingMetadataFrom context f = 
                     fun message ->
@@ -485,66 +485,66 @@ module Setup =
                 module Functions = 
 
                     ///Creates a tuple to unit operation
-                    let toUnit (f : Args<'m> -> unit) =
+                    let toUnit (f : Args<'TMessage> -> unit) =
                         fun (context : OperationContext) ->
 
                             let f' = usingMetadataFrom context f
 
                             context
-                            |> getMessageAs<'m>
+                            |> getMessageAs<'TMessage>
                             |> f'
 
                             OperationResult.Empty
 
                     ///Creates a tuple to resource operation
-                    let toResource (f : Args<'m> -> 'r) =
+                    let toResource (f : Args<'TMessage> -> 'TResource) =
                         fun (context : OperationContext) ->
 
                             let f' = usingMetadataFrom context f
 
                             context
-                            |> getMessageAs<'m>
+                            |> getMessageAs<'TMessage>
                             |> f'
                             |> OperationResult.ResourceOnly
 
                     ///Creates a tuple to optional resource operation
-                    let toOptionalResource (f : Args<'m> -> 'r option) = 
+                    let toOptionalResource (f : Args<'TMessage> -> 'TResource option) = 
                         fun (context : OperationContext) ->
 
                             let f' = usingMetadataFrom context f
 
                             context
-                            |> getMessageAs<'m>
+                            |> getMessageAs<'TMessage>
                             |> f'
                             |> getOptionalResult
 
                     ///Creates a tuple to operation result operation
-                    let toResult (f : Args<'m> -> OperationResult) =
+                    let toResult (f : Args<'TMessage> -> OperationResult) =
                         fun (context : OperationContext) ->
                         
                             let f' = usingMetadataFrom context f
 
                             context
-                            |> getMessageAs<'m>
+                            |> getMessageAs<'TMessage>
                             |> f'
 
                 [<AutoOpen>]
                 module Types = 
 
                     ///Wrapper for tuple to unit operations
-                    type UnitWrapper<'m> (f : Args<'m> -> unit) =
+                    type UnitWrapper<'TMessage> (f : Args<'TMessage> -> unit) =
                         inherit OperationWrapper (toUnit f)
 
                     ///Wrapper for tuple to resource operations
-                    type ResourceWrapper<'m, 'r> (f : Args<'m> -> 'r) = 
+                    type ResourceWrapper<'TMessage, 'TResource> (f : Args<'TMessage> -> 'TResource) = 
                         inherit OperationWrapper (toResource f)
 
                     ///Wrapper for tuple to optional resource operations
-                    type OptionalResourceWrapper<'m, 'r> (f : Args<'m> -> 'r option) = 
+                    type OptionalResourceWrapper<'TMessage, 'TResource> (f : Args<'TMessage> -> 'TResource option) = 
                         inherit OperationWrapper (toOptionalResource f)
 
                     ///Wrapper for tuple to operation result operations
-                    type ResultWrapper<'m> (f : Args<'m> -> OperationResult) = 
+                    type ResultWrapper<'TMessage> (f : Args<'TMessage> -> OperationResult) = 
                         inherit OperationWrapper (toResult f)
 
                 ///Functions which create wrapper types for operations accepting an optional message and metadata
@@ -579,14 +579,14 @@ module Setup =
                             OperationResult.Empty                
                     
                     ///Creates a metadata to resource operation
-                    let toResource<'r> (f : OperationMetadata -> 'r) = 
+                    let toResource<'TResource> (f : OperationMetadata -> 'TResource) = 
                         fun (ctx : OperationContext) ->
                             ctx.Metadata
                             |> f
                             |> OperationResult.ResourceOnly      
                     
                     ///Creates a metadata to optional resource operation
-                    let toOptionalResource<'r> (f : OperationMetadata -> 'r option) =     
+                    let toOptionalResource<'TResource> (f : OperationMetadata -> 'TResource option) =     
                         fun (ctx : OperationContext) ->
                             match (f ctx.Metadata) with
                             | Some resource -> OperationResult.ResourceOnly resource
@@ -605,11 +605,11 @@ module Setup =
                         inherit OperationWrapper (toUnit f)
 
                     ///A wrapper for metadata to resource functions
-                    type ResourceWrapper<'r> (f : OperationMetadata -> 'r) = 
+                    type ResourceWrapper<'TResource> (f : OperationMetadata -> 'TResource) = 
                         inherit OperationWrapper (toResource f)
 
                     ///A wrapper for metadata to optional resource functions
-                    type OptionalResourceWrapper<'r> (f : OperationMetadata -> 'r option) = 
+                    type OptionalResourceWrapper<'TResource> (f : OperationMetadata -> 'TResource option) = 
                         inherit OperationWrapper (toOptionalResource f)
                         
                     ///A wrapper for metadata to result functions
@@ -684,7 +684,7 @@ module Setup =
                         Some (Message (type', false))                    
             
             ///Wraps a function, creating an operation based on its parameters
-            let wrap<'m, 'r> (f : 'm -> 'r) = 
+            let wrap<'TInput, 'TOutput> (f : 'TInput -> 'TOutput) = 
 
                 //TODO This function is extremely hacky and smells a lot. There must be a better way of doing this.
                 //Member overloading wasn't quite up to the task due to the fact that functions matching 'x option -> 'y
@@ -708,8 +708,8 @@ module Setup =
                     - 'TResource option
                 **)
 
-                let inputType = typeof<'m>
-                let resultType = typeof<'r>                                               
+                let inputType = typeof<'TInput>
+                let resultType = typeof<'TOutput>                                               
 
                 let wrapperType, messageType = 
                     match (getInputType inputType) with
