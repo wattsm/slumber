@@ -32,13 +32,7 @@ module Discovery =
         type BindingInfo = {
             Binding : Binding;
             Parameters : (String * String) list;
-        }
-
-        ///Represents possible outcomes of trying to match a URI to an operation
-        type MatchingResult = 
-            | InvalidUri
-            | InvalidVerb
-            | Valid of BindingInfo        
+        }     
 
         ///Attempts to match a request URI to the given endpoint and returns the matching URI variables
         let private getTemplateVariables args (endpoint : Endpoint) = 
