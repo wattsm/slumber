@@ -79,7 +79,7 @@ let authenticate (request : Request) =
   | _ -> Deny
 
 ///Slumber configuration
-containerAt (relativeUri "/")
+containerAt (relativeUri baseUrl "/")
 |> authenticatedBy authenticate
 |> with' (
     endpointAt "/widget-catalog"
