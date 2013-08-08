@@ -36,3 +36,4 @@ App_Data/
 !lib/
 [Pp]ackages/
 !NuGet.exe
+[Ll]ogs/

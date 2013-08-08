@@ -6,6 +6,7 @@ open System.Runtime.Serialization
 module Startup = 
 
     open Slumber    
+    open Slumber.Common.Http
 
     [<AutoOpen>]
     module Model = 
@@ -29,19 +30,19 @@ module Startup =
             [<field: DataMember (Name = "services")>]
             Services : Service seq;
         }
-
-    let getCatalog (ctx : OperationContext) = 
+    
+    let getCatalog (meta : OperationMetadata) = 
         {
-            Self = ctx.Metadata.Url.BaseUrl.ToString ();
+            Self = meta.Url.BaseUrl.AbsoluteUri;
             Services = 
                 [
                     {
                         Name = "get-catalog";
-                        Url = ctx.Metadata.Url.BaseUrl.ToString ();
+                        Url = meta.Url.BaseUrl.AbsoluteUri;
                     };
                     {
                         Name = "get-people";
-                        Url = (Uri (ctx.Metadata.Url.BaseUrl, "people")).ToString ();
+                        Url = string (createAbsoluteUri meta.Url.BaseUrl "people");
                     };
                 ];
         }
