@@ -171,7 +171,7 @@ module Common =
             }
 
         ///Creates an absolute URL from a base URL and a relative URL
-        let createAbsoluteUriFrom (baseUrl : Uri) (relativeUrl : String) = 
+        let createAbsoluteUri (baseUrl : Uri) (relativeUrl : String) = 
 
             //NOTE That this function adds/removes slashes in the base and relative URLs. This is to 
             //maintain expected behaviour when working with extensionless URLs. By default, for example
@@ -191,20 +191,6 @@ module Common =
                     baseUrl
 
             Uri (baseUrl', relativeUrl')
-
-        ///Creates an absolute URL given a relative URL using the current HttpContext or defaulting to localhost if none set
-        let createAbsoluteUri relativeUrl = 
-
-            let baseUrl = 
-                if (HttpContext.Current <> null) then
-                    Uri (
-                        Uri (HttpContext.Current.Request.Url.GetLeftPart (UriPartial.Authority), UriKind.Absolute),
-                        HttpContext.Current.Request.ApplicationPath
-                    )
-                else
-                    Uri ("http://localhost", UriKind.Absolute)
-
-            createAbsoluteUriFrom baseUrl relativeUrl
 
         ///Contains functions for working with HTTP headers
         module Headers = 

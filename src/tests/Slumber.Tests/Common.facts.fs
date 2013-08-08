@@ -137,7 +137,7 @@ module ``Common facts`` =
                 request'.Id |> should equal id
 
         [<Trait (Traits.Names.Module, ModuleName)>]
-        module ``createAbsoluteUriFrom function`` = 
+        module ``createAbsoluteUri function`` = 
 
             [<Theory>]
             [<InlineData ("http://localhost", "api", "http://localhost/api")>]
@@ -151,7 +151,7 @@ module ``Common facts`` =
             let ``Returns correct URL`` baseUrl relativeUrl expectedUrl = 
 
                 let baseUrl' = Uri (baseUrl, UriKind.Absolute)
-                let actualUrl = createAbsoluteUriFrom baseUrl' relativeUrl
+                let actualUrl = createAbsoluteUri baseUrl' relativeUrl
 
                 actualUrl.AbsoluteUri |> should equal expectedUrl
 

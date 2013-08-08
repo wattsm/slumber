@@ -809,8 +809,8 @@ module Setup =
             Uri (uri, UriKind.Absolute)
 
         ///Creates an absolute URI from a relative URI
-        let relativeUri =
-            createAbsoluteUri
+        let relativeUri baseUrl =
+            createAbsoluteUri baseUrl
 
         ///Creates a new container
         let containerAt (uri : Uri) = 
@@ -900,4 +900,4 @@ module Setup =
 
     ///Describes a service container
     type IContainerDescription =
-        abstract member Describe : unit -> Container
+        abstract member Describe : Uri -> Container

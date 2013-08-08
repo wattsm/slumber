@@ -24,8 +24,8 @@ module Config =
 
         interface IContainerDescription with
         
-            member this.Describe () =
-                containerAt (relativeUri "/")
+            member this.Describe baseUrl =
+                containerAt (relativeUri baseUrl "/")
                 |> authenticatedBy authenticate
                 |> with' (
                         endpointAt "/"
