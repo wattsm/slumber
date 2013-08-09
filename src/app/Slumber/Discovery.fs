@@ -147,7 +147,7 @@ module Discovery =
         open Slumber.Configuration.Containers
 
         ///The default content type to be used if the Content-Type of Accept headers are omitted
-        let [<Literal>] DefaultContentType = "text/xml"
+        let [<Literal>] DefaultMediaType = MediaTypes.Text.Xml
 
         ///The 'any' content type
         let [<Literal>] AnyContentType = "*/*"
@@ -161,7 +161,7 @@ module Discovery =
                 let requestedContentType = 
                     match (Headers.getContentType args.Request.Payload) with
                     | Some contentType -> contentType
-                    | _ -> DefaultContentType
+                    | _ -> DefaultMediaType
 
                 let targetContentType = 
                     args.Container
@@ -192,7 +192,7 @@ module Discovery =
                 let requestedContentType = 
                     match (Headers.getAccept args.Request.Payload) with
                     | Some contentType when (contentType <> AnyContentType) -> contentType
-                    | _ -> DefaultContentType
+                    | _ -> DefaultMediaType
 
                 let writer = 
                     requestedContentType

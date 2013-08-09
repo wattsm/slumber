@@ -648,8 +648,8 @@ module ``Setup facts`` =
 
             let [<Fact>] ``Writer is added to content types`` () =
                 Container.Empty
-                |> writing "text/xml" write
-                |> getWriter "text/xml"
+                |> writing MediaTypes.Text.Xml write
+                |> getWriter MediaTypes.Text.Xml
                 |> Option.isSome
                 |> should be True
 
@@ -657,8 +657,8 @@ module ``Setup facts`` =
                 (fun () ->
 
                     Container.Empty
-                    |> writing "text/xml" write
-                    |> writing "text/xml" write
+                    |> writing MediaTypes.Text.Xml write
+                    |> writing MediaTypes.Text.Xml write
                     |> ignore
 
                 ) |> should throw typeof<SetupException>
@@ -671,8 +671,8 @@ module ``Setup facts`` =
 
             let [<Fact>] ``Reader is added to content types`` () =
                 Container.Empty
-                |> reading "text/xml" read
-                |> getReader "text/xml"
+                |> reading MediaTypes.Text.Xml read
+                |> getReader MediaTypes.Text.Xml
                 |> Option.isSome
                 |> should be True
 
@@ -680,8 +680,8 @@ module ``Setup facts`` =
                 (fun () ->
 
                     Container.Empty
-                    |> reading "text/xml" read
-                    |> reading "text/xml" read
+                    |> reading MediaTypes.Text.Xml read
+                    |> reading MediaTypes.Text.Xml read
                     |> ignore
 
                 ) |> should throw typeof<SetupException>
@@ -691,16 +691,16 @@ module ``Setup facts`` =
 
             let [<Fact>] ``Forwarded types are added to contianer`` () =
                 Container.Empty
-                |> forwarding "text/html" "text/xml"
-                |> applyForwarding "text/html"
-                |> should equal "text/xml"
+                |> forwarding MediaTypes.Text.Html MediaTypes.Text.Xml
+                |> applyForwarding MediaTypes.Text.Html
+                |> should equal MediaTypes.Text.Xml
 
             let [<Fact>] ``Duplicate from type raises SetupException`` () =
                 (fun () ->
 
                     Container.Empty
-                    |> forwarding "text/html" "text/xml"
-                    |> forwarding "text/html" "application/json"
+                    |> forwarding MediaTypes.Text.Html MediaTypes.Text.Xml
+                    |> forwarding MediaTypes.Text.Html MediaTypes.Application.Json
                     |> ignore
 
                 ) |> should throw typeof<SetupException>

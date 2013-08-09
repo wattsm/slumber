@@ -75,8 +75,8 @@ module ``Discovery facts`` =
                                 {
                                     IOConfig.Empty
                                     with
-                                        Readers = [ ("text/xml", reader); ("application/json", reader) ];
-                                        Writers = [ ("text/xml", writer); ("application/json", writer) ];
+                                        Readers = [ (MediaTypes.Text.Xml, reader); (MediaTypes.Application.Json, reader) ];
+                                        Writers = [ (MediaTypes.Text.Xml, writer); (MediaTypes.Application.Json, writer) ];
                                 }
                             BaseUrl = baseUrl;
                     }
@@ -479,34 +479,34 @@ module ``Discovery facts`` =
 
             let [<Fact>] ``Specified content type is selected if supported`` () =
                 getArgs "/people/12345"
-                |> addHeader "Content-Type" "text/xml"
+                |> addHeader "Content-Type" MediaTypes.Text.Xml
                 |> getRequestType
-                |> should be (Some' "text/xml")
+                |> should be (Some' MediaTypes.Text.Xml)
 
             let [<Fact>] ``Nothing is selected if content type is not supported`` () =
                 getArgs "/people/12345"
-                |> addHeader "Content-Type" "text/html"
+                |> addHeader "Content-Type" "application/vendor"
                 |> getRequestType
                 |> should be None'<String>
 
             let [<Fact>] ``Default content type is selected if none specified`` () =
                 getArgs "/people/12345"
                 |> getRequestType
-                |> should be (Some' DefaultContentType)
+                |> should be (Some' DefaultMediaType)
 
             let [<Fact>] ``Target content type is used if specified content type is forwarded`` () =
                 getArgs "/people/12345"
-                |> addHeader "Content-Type" "text/html"
-                |> addForwardedType "text/html" "text/xml"
+                |> addHeader "Content-Type" MediaTypes.Text.Html
+                |> addForwardedType MediaTypes.Text.Html MediaTypes.Text.Xml
                 |> getRequestType
-                |> should be (Some' "text/xml")
+                |> should be (Some' MediaTypes.Text.Xml)
 
             let [<Fact>] ``Target content type is used in preference to specified content type even if supported`` () =
                 getArgs "/people/12345"
-                |> addHeader "Content-Type" "text/xml"
-                |> addForwardedType "text/xml" "application/json"
+                |> addHeader "Content-Type" MediaTypes.Text.Xml
+                |> addForwardedType MediaTypes.Text.Xml MediaTypes.Application.Json
                 |> getRequestType
-                |> should be (Some' "application/json")
+                |> should be (Some' MediaTypes.Application.Json)
                 
         [<Trait (Traits.Names.Module, ModuleName)>]
         module ``asyncGetWriter function`` =
@@ -524,53 +524,53 @@ module ``Discovery facts`` =
 
             let [<Fact>] ``Specified content type is selected if supported`` () =
                 getArgs "/people/12345"
-                |> addHeader "Accept" "text/xml"
+                |> addHeader "Accept" MediaTypes.Text.Xml
                 |> getResponseType
-                |> should be (Some' "text/xml")
+                |> should be (Some' MediaTypes.Text.Xml)
 
             let [<Fact>] ``First supported content type is selected if multiple types are specified`` () =
                 getArgs "/people/12345"
                 |> addHeader "Accept" "text/html, text/xml, application/json"
                 |> getResponseType
-                |> should be (Some' "text/xml")
+                |> should be (Some' MediaTypes.Text.Xml)
 
             let [<Fact>] ``Nothing is selected if content type is not supported`` () =
                 getArgs "/people/12345"
-                |> addHeader "Accept" "text/html"
+                |> addHeader "Accept" MediaTypes.Text.Html
                 |> getResponseType
                 |> should be None'<String>
 
             let [<Fact>] ``Default content type is selected if none specified`` () =
                 getArgs "/people/12345"
                 |> getResponseType
-                |> should be (Some' DefaultContentType)
+                |> should be (Some' DefaultMediaType)
 
             let [<Fact>] ``Default content type is selected if */* is specified`` () =
                 getArgs "/people/12345"
                 |> addHeader "Accept" "*/*"
                 |> getResponseType
-                |> should be (Some' DefaultContentType)
+                |> should be (Some' DefaultMediaType)
 
             let [<Fact>] ``Target content type is used if specified content type is forwarded`` () =
                 getArgs "/people/12345"
-                |> addHeader "Accept" "text/html"
-                |> addForwardedType "text/html" "text/xml"
+                |> addHeader "Accept" MediaTypes.Text.Html
+                |> addForwardedType MediaTypes.Text.Html MediaTypes.Text.Xml
                 |> getResponseType
-                |> should be (Some' "text/xml")
+                |> should be (Some' MediaTypes.Text.Xml)
 
             let [<Fact>] ``Target content type is used in preference to specified content type even if supported`` () =
                 getArgs "/people/12345"
-                |> addHeader "Accept" "text/xml"
-                |> addForwardedType "text/xml" "application/json"
+                |> addHeader "Accept" MediaTypes.Text.Xml
+                |> addForwardedType MediaTypes.Text.Xml MediaTypes.Application.Json
                 |> getResponseType
-                |> should be (Some' "application/json")
+                |> should be (Some' MediaTypes.Application.Json)
 
             let [<Fact>] ``Content type forwarding is applied when multiple content types are specified`` () =
                 getArgs "/people/12345"
                 |> addHeader "Accept" "text/html, text/plain, application/json"
-                |> addForwardedType "text/html" "text/xml"
+                |> addForwardedType MediaTypes.Text.Html MediaTypes.Text.Xml
                 |> getResponseType
-                |> should be (Some' "text/xml")
+                |> should be (Some' MediaTypes.Text.Xml)
 
     [<Trait (Traits.Names.Module, ModuleName)>]
     module ``run function`` = 
@@ -592,7 +592,7 @@ module ``Discovery facts`` =
                 | _ -> false
 
             getArgs "/people/12345"
-            |> addHeader "Content-Type" "text/html"
+            |> addHeader "Content-Type" MediaTypes.Text.Html
             |> run
             |> isNotSupported
             |> should be True
@@ -627,7 +627,7 @@ module ``Discovery facts`` =
                 | Running (args : Execution.ExecutionArgs) -> 
                     match args.Reader with
                     | Some reader -> 
-                        reader.ContentType = DefaultContentType
+                        reader.ContentType = DefaultMediaType
                             && reader.MessageType = typedefof<String>
                     | _ -> false
                 | _ -> false
@@ -643,7 +643,7 @@ module ``Discovery facts`` =
                 match state with
                 | Running (args : Execution.ExecutionArgs) ->
                     match args.Writer with
-                    | Some writer -> writer.ContentType = DefaultContentType
+                    | Some writer -> writer.ContentType = DefaultMediaType
                     | _ -> false
                 | _ -> false
 

@@ -50,6 +50,20 @@ module Common =
             let [<Literal>] Put = "PUT"
             let [<Literal>] Delete = "DELETE"
 
+        ///Contains constants for common media types
+        module MediaTypes = 
+
+            [<RequireQualifiedAccess>]
+            module Text = 
+                let [<Literal>] Xml = "text/xml"
+                let [<Literal>] Plain = "text/plain"
+                let [<Literal>] Html = "text/html"
+
+            [<RequireQualifiedAccess>]
+            module Application = 
+                let [<Literal>] Json = "application/json"
+            
+
         ///Represents various forms of a request URL
         type Urls = {
             Raw : Uri;

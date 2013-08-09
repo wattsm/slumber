@@ -6,9 +6,6 @@ open Slumber.Common.Http
 ///Contains functions and types used to construct request pipelines
 module Framework =
 
-    ///Content type used when displaying textual messages
-    let [<Literal>] MessageContentType = "text/plain"
-
     ///Describes reasons for the pipeline to stop
     type StopType = 
         | Exception of Exception

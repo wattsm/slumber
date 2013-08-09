@@ -12,6 +12,9 @@ open Slumber.Framework
 ///Contains functions used to render the HTTP response 
 module Render =
 
+    ///Content type used for textual message
+    let [<Literal>] MessageContentType = MediaTypes.Text.Plain
+
     ///Functions for writing to the HTTP response object
     module Writing = 
 

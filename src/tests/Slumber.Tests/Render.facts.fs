@@ -119,7 +119,7 @@ module ``Render facts`` =
                 |> should be (Some' (string length))
 
             let [<Fact>] ``Content-Type header is omitted set when specified`` () =
-                let contentType = "text/xml"
+                let contentType = MediaTypes.Text.Xml
                 in
                     emptyHeaders ()
                     |> writeHeaders (getResponse 0 (Some contentType))
@@ -145,7 +145,7 @@ module ``Render facts`` =
                 emptyHeaders ()
                 |> writeHeaders (
                         getResponse 0 None
-                        |> withHeader Headers.ContentType "text/xml"
+                        |> withHeader Headers.ContentType MediaTypes.Text.Xml
                     )
                 |> getHeader Headers.ContentType
                 |> should be None'<String>
@@ -181,9 +181,9 @@ module ``Render facts`` =
                     FakeResponse ()
 
                 let isCorrect () = 
-                    response.ContentType = "text/xml"
+                    response.ContentType = MediaTypes.Text.Xml
 
-                getArgs (Some "text/xml") None
+                getArgs (Some MediaTypes.Text.Xml) None
                 |> writeSpecialHeaders response
                 |> isCorrect
                 |> should be True
@@ -194,9 +194,9 @@ module ``Render facts`` =
                     FakeResponse ()
 
                 let isCorrect () = 
-                    response.ContentType = "text/xml"
+                    response.ContentType = MediaTypes.Text.Xml
 
-                getArgs None (Some "text/xml")
+                getArgs None (Some MediaTypes.Text.Xml)
                 |> writeSpecialHeaders response
                 |> isCorrect
                 |> should be True

@@ -42,8 +42,8 @@ module Config =
                         |> supporting (delete People.deletePerson)
                         |> supporting (put People.updatePerson)
                     )
-                |> reading "application/json" Json.read
-                |> writing "application/json" Json.write
-                |> reading "text/xml" Xml.read
-                |> writing "text/xml" Xml.write
-                |> forwarding "text/html" "text/xml"
+                |> reading MediaTypes.Application.Json Json.read
+                |> writing MediaTypes.Application.Json Json.write
+                |> reading MediaTypes.Text.Xml Xml.read
+                |> writing MediaTypes.Text.Xml Xml.write
+                |> forwarding MediaTypes.Text.Html MediaTypes.Text.Xml

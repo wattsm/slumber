@@ -36,8 +36,8 @@ module ``Common facts`` =
 
                         member this.Headers = 
                             [
-                                ("Content-Type", "text/xml");
-                                ("Accept", "application/json");
+                                ("Content-Type", MediaTypes.Text.Xml);
+                                ("Accept", MediaTypes.Application.Json);
                             ]
                             |> List.toNvc
 
@@ -96,7 +96,7 @@ module ``Common facts`` =
                 let payload = 
                     parsePayload request
 
-                payload.Headers |> List.same [ ("Content-Type", "text/xml"); ("Accept", "application/json"); ] |> should be True
+                payload.Headers |> List.same [ ("Content-Type", MediaTypes.Text.Xml); ("Accept", MediaTypes.Application.Json); ] |> should be True
 
             let [<Fact>] ``Body input stream is copied when not empty`` () =
 
@@ -165,7 +165,7 @@ module ``Common facts`` =
                 {
                     Headers = 
                         [
-                            ("Content-Type", "text/xml");
+                            ("Content-Type", MediaTypes.Text.Xml);
                             ("Authorization", String.Empty);
                         ];
                     Body = None;
@@ -177,7 +177,7 @@ module ``Common facts`` =
                 let [<Fact>] ``Correct value is returned when header is present`` () =
                     payload
                     |> getHeaderValue "Content-Type"
-                    |> should be (Some' "text/xml")
+                    |> should be (Some' MediaTypes.Text.Xml)
 
                 let [<Fact>] ``None is returned when header is not present`` () = 
                     payload
@@ -190,7 +190,7 @@ module ``Common facts`` =
                 let [<Fact>] ``Correct value is returned when the header is present and non-empty`` () =
                     payload
                     |> getNonEmptyHeaderValue "Content-Type"
-                    |> should be (Some' "text/xml")
+                    |> should be (Some' MediaTypes.Text.Xml)
 
                 let [<Fact>] ``None is returned when the header is present and empty`` () =
                     payload
