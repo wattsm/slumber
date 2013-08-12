@@ -53,11 +53,11 @@
     <Compile Include="Render.fs" />
     <Compile Include="Execution.fs" />
     <Compile Include="Configuration.fs" />
-    <Compile Include="Setup.fs" />
     <Compile Include="Discovery.fs" />
     <Compile Include="Bootstrap.fs" />
     <Compile Include="Pipeline.fs" />
     <Compile Include="Handler.fs" />
+    <Compile Include="Setup.fs" />
   </ItemGroup>
   <PropertyGroup>
     <MinimumVisualStudioVersion Condition="'$(MinimumVisualStudioVersion)' == ''">11</MinimumVisualStudioVersion>
