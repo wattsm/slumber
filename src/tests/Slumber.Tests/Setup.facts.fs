@@ -641,6 +641,68 @@ module ``Setup facts`` =
                 ) |> should throw typeof<SetupException>
 
         [<Trait (Traits.Names.Module, ModuleName)>]
+        module ``all function`` = 
+
+            let [<Fact>] ``Binding is added to all existing endpoints`` () =
+
+                let hasCorrectBindings container = 
+                    container.Endpoints
+                    |> List.exists (fun endpoint ->
+                            endpoint.Bindings
+                            |> List.map (fun binding -> binding.Verb)
+                            |> List.exists (fun verb -> verb = "OPTIONS")
+                            |> not
+                        )
+                    |> not
+
+                let container = 
+                    {
+                        Container.Empty
+                        with
+                            Endpoints = 
+                                [
+                                    Endpoint.Empty;
+                                    Endpoint.Empty;
+                                ]
+                    }
+
+                container
+                |> all { Binding.Empty with Verb = "OPTIONS"; }
+                |> hasCorrectBindings
+                |> should be True
+
+            let [<Fact>] ``NotSupportedException is thrown if any endpoints exist which already have bindings for the verb`` () =
+                
+                let container = 
+                    {
+                        Container.Empty
+                        with
+                            Endpoints = 
+                                [
+                                    {
+                                        Endpoint.Empty
+                                        with
+                                            Bindings = 
+                                                [
+                                                    {
+                                                        Binding.Empty
+                                                        with
+                                                            Verb = "OPTIONS";
+                                                    }
+                                                ];
+                                    }
+                                ];
+                    }
+
+                (fun () ->
+                    container
+                    |> all ({ Binding.Empty with Verb = "OPTIONS"; })
+                    |> ignore
+
+                ) |> should throw typeof<NotSupportedException>
+
+
+        [<Trait (Traits.Names.Module, ModuleName)>]
         module ``writing function`` =
 
             let write _ =

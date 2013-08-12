@@ -897,3 +897,30 @@ module Setup =
                                     ForwardedTypes = (fromContentType, toContentType) :: container.IO.ForwardedTypes;
                             }
                 }    
+
+        ///Applies a binding to all endpoints
+        let all (binding : Binding) (container : Container) = 
+
+            let verbAlreadyUsed = 
+                container.Endpoints
+                |> List.tryPick (Endpoints.tryGetBinding binding.Verb)
+                |> Option.isSome
+
+            if verbAlreadyUsed then
+                raise (NotSupportedException ("One or more endpoints already has a binding for the specified HTTP verb."))
+
+            let endpoints' = 
+                container.Endpoints
+                |> List.map (fun endpoint ->
+                        {
+                            endpoint
+                            with
+                                Bindings = binding :: endpoint.Bindings;
+                        }
+                    )
+
+            {
+                container
+                with
+                    Endpoints = endpoints';
+            }
