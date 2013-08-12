@@ -172,3 +172,7 @@ module Configuration =
         | Explicit of Container
         | Implicit
         | Mixed of (Container -> Container)
+
+    ///Describes a service container
+    type IContainerDescription =
+        abstract member Describe : Uri -> Container

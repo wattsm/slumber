@@ -896,8 +896,4 @@ module Setup =
                                 with
                                     ForwardedTypes = (fromContentType, toContentType) :: container.IO.ForwardedTypes;
                             }
-                }
-
-    ///Describes a service container
-    type IContainerDescription =
-        abstract member Describe : Uri -> Container
+                }    

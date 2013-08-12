@@ -9,7 +9,6 @@ open Slumber.Common.Http
 open Slumber.Configuration
 open Slumber.Discovery
 open Slumber.Framework
-open Slumber.Setup
 open System.Collections.Generic
 
 ///Contains functions used to parse the raw HTTP request and initialise Slumber's configuration
