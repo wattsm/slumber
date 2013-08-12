@@ -49,6 +49,9 @@ module Common =
             let [<Literal>] Post = "POST"
             let [<Literal>] Put = "PUT"
             let [<Literal>] Delete = "DELETE"
+            let [<Literal>] Options = "OPTIONS"
+            let [<Literal>] Head = "HEAD"
+            let [<Literal>] Patch = "PATCH"
 
         ///Contains constants for common media types
         module MediaTypes = 

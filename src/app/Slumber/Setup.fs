@@ -768,6 +768,18 @@ module Setup =
         let delete f = 
             bind Verbs.Delete f
 
+        ///Creates a new OPTIONS binding
+        let options f = 
+            bind Verbs.Options f 
+
+        ///Creates a new HEAD binding
+        let head f = 
+            bind Verbs.Head f
+
+        ///Creates a new PATCH binding
+        let patch f = 
+            bind Verbs.Patch f
+
         ///Creates a public binding
         let public' binder f = 
             { (binder f) with IsPublic = true; }

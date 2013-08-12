@@ -49,6 +49,24 @@ module ``Setup facts`` =
                 delete noop |> getVerb |> should equal Verbs.Delete
 
         [<Trait (Traits.Names.Module, ModuleName)>]
+        module ``options function`` =
+
+            let [<Fact>] ``Creates a binding for the OPTIONS verb`` () =
+                options noop |> getVerb |> should equal Verbs.Options
+
+        [<Trait (Traits.Names.Module, ModuleName)>]
+        module ``head function`` =
+
+            let [<Fact>] ``Creates a binding for the HEAD verb`` () =
+                head noop |> getVerb |> should equal Verbs.Head
+
+        [<Trait (Traits.Names.Module, ModuleName)>]
+        module ``patch function`` =
+
+            let [<Fact>] ``Creates a binding for the PATCH verb`` () =
+                patch noop |> getVerb |> should equal Verbs.Patch
+
+        [<Trait (Traits.Names.Module, ModuleName)>]
         module ``bind function`` = 
 
             let getMessageType binding = 
