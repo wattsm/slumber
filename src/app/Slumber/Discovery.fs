@@ -35,14 +35,33 @@ module Discovery =
     ///Contains functions for matching a request URI and verb to an operation
     module Matching = 
         
+        open System.IO
         open Slumber.Common.AsyncAttempt
         open Slumber.Framework.Core.Endpoints
 
+        ///Normalises a URL for template matching, ensuring folder-level URLs end with a trailing slash.
+        ///This is important for cases when the base URL and candidate URL are essentially equal - e.g.
+        //http://localhost/api/ and http://localhost/api.
+        let normaliseUrl (url : Uri) = 
+            if (url.AbsolutePath.EndsWith "/") then
+                url
+            else
+                Uri (
+                    String.Format (
+                        "{0}{1}/{2}",
+                        url.GetLeftPart (UriPartial.Authority),
+                        url.AbsolutePath,
+                        url.Query
+                    ),
+                    UriKind.Absolute
+                )
+
         ///Attempts to match a request URI to the given endpoint and returns the matching URI variables
         let private getTemplateVariables args (endpoint : Endpoint) = 
-
+        
+            let url = normaliseUrl args.Request.Url.Raw
             let template = UriTemplate (endpoint.Template, true)            
-            let results = template.Match (args.Container.BaseUrl, args.Request.Url.Raw)
+            let results = template.Match (args.Container.BaseUrl, url)
 
             if results = null then
                 None

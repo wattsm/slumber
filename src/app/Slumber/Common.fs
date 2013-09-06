@@ -157,9 +157,14 @@ module Common =
             let root = 
                 Uri (raw.Url.GetLeftPart (UriPartial.Authority), UriKind.Absolute)
 
+            let path = 
+                match (raw.Url.AbsolutePath.Substring (raw.ApplicationPath.Length)) with
+                | "" -> "/"
+                | p -> p
+
             {
                 Raw = raw.Url;                
-                Path = raw.Url.AbsolutePath.Substring (raw.ApplicationPath.Length);
+                Path = path;
                 Query = raw.QueryString |> NameValueCollection.toList;
                 BaseUrl = Uri (root, raw.ApplicationPath);
             }

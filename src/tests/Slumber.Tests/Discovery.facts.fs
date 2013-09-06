@@ -117,6 +117,31 @@ module ``Discovery facts`` =
         let [<Literal>] ModuleName = "Discovery.Matching"
 
         [<Trait (Traits.Names.Module, ModuleName)>]
+        module ``normaliseUrl function`` =
+
+            let normaliseUrl' url = 
+                Uri (url, UriKind.Absolute)
+                |> normaliseUrl                
+
+            [<Theory>]
+            [<InlineData ("http://localhost/")>]
+            [<InlineData ("http://localhost/api/")>]
+            let ``URIs with a trailing slash are not changed`` url =
+                normaliseUrl' url
+                |> string
+                |> should equal url
+
+            [<Theory>]
+            [<InlineData ("http://localhost", "http://localhost/")>]
+            [<InlineData ("http://localhost?key=value", "http://localhost/?key=value")>]
+            [<InlineData ("http://localhost/api", "http://localhost/api/")>]
+            [<InlineData ("http://localhost/api?key=value", "http://localhost/api/?key=value")>]
+            let ``A trailing slash is added after the path if not present`` url expected =
+                normaliseUrl' url
+                |> string
+                |> should equal expected
+
+        [<Trait (Traits.Names.Module, ModuleName)>]
         module ``asyncMatchEndpoint function`` = 
 
             let matchEndpoint = 

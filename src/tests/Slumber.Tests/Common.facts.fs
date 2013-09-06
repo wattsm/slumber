@@ -20,12 +20,12 @@ module ``Common facts`` =
         [<AutoOpen>]
         module Helpers = 
 
-            let getRequest (body : string) = 
+            let getRequestTo (url : String) (app : String) (body : string) = 
                 {
                     new HttpRequestBase () with
 
-                        member this.Url = Uri ("http://localhost:8080/api/people", UriKind.Absolute)
-                        member this.ApplicationPath = "/api"
+                        member this.Url = Uri (url, UriKind.Absolute)
+                        member this.ApplicationPath = app
                         member this.HttpMethod = "POST"
                     
                         member this.QueryString = 
@@ -54,6 +54,9 @@ module ``Common facts`` =
 
                 }
 
+            let getRequest (body : string) = 
+                getRequestTo "http://localhost:8080/api/people" "/api" body
+
             let request = 
                 getRequest "Hello, World"
 
@@ -73,6 +76,14 @@ module ``Common facts`` =
                     parseUrls request
 
                 urls.Path |> should equal "/people"
+
+            let [<Fact>] ``Forward slash is set for root path`` () =
+
+                let urls = 
+                    getRequestTo "http://localhost:8080/api" "/api" "Hello, World"
+                    |> parseUrls
+
+                urls.Path |> should equal "/"
 
             let [<Fact>] ``Query is set correctly`` () =
 
