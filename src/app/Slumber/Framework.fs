@@ -278,3 +278,69 @@ module Framework =
         let continue' arg = 
             Running arg
 
+    ///Contains functions for loading implicit configuration
+    [<RequireQualifiedAccess>]
+    module ImplicitConfiguration = 
+
+        open System.IO
+        open System.Reflection
+        open System.Collections.Generic
+        open HandyFS.Types
+
+        ///Instantiates and queries the first container description that can be found in the /bin/ folder 
+        let private find baseUrl = 
+
+            ///TODO Tidy up / abstract this function
+
+            let tryLoadAssembly path = 
+                try 
+                    path
+                    |> File.ReadAllBytes
+                    |> Assembly.Load
+                    |> Some
+                with
+                | _ -> None
+
+            let tryGetTypes (assembly : Assembly) = 
+                try
+                    assembly.GetTypes ()
+                with
+                | :? ReflectionTypeLoadException -> Array.empty
+
+            let tryCreateDescription (type' : Type) = 
+                try
+                    Some ((Activator.CreateInstance type') :?> IContainerDescription)
+                with
+                | _ -> None
+
+            let binPath = 
+                Path.Combine (AppDomain.CurrentDomain.BaseDirectory, "bin")
+
+            let types = 
+                Directory.GetFiles (binPath, "*.dll", SearchOption.TopDirectoryOnly)
+                |> Array.Parallel.choose tryLoadAssembly
+                |> Array.Parallel.collect tryGetTypes
+                |> Array.filter (implements typeof<IContainerDescription>)
+
+            if (Array.isEmpty types) then
+                invalidOp "Implicit configuration requires a type that implements IContainerDescription but none could be found."
+
+            else
+                match (Array.tryPick tryCreateDescription types) with
+                | Some description -> description.Describe baseUrl
+                | _ -> invalidOp "No type implementing IContainerDescription could be instantiated." //TODO More appropriate exception type?
+    
+        ///Instantiates and queries the first container description that can be found in the /bin/ folder and caches the result
+        let get = 
+
+            let configs = Dictionary<Uri, Container> ()
+
+            fun (baseUrl : Uri) -> 
+                match (configs.TryGetValue baseUrl) with
+                | (true, config) -> config
+                | _ ->
+                    let config = find baseUrl
+
+                    configs.Add (baseUrl, config)
+                    config
+
