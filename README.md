@@ -66,11 +66,11 @@ These functions can be exposed as RESTful endpoints using Slumber:
 
 ```fsharp
 open Slumber
+open Slumber.Framework
+open Slumber.Setup
 open Slumber.Common.Http
 open Slumber.Common.Http.Headers
-open Slumber.Configuration
 open Slumber.IO.DataContract
-open Slumber.Setup
 
 ///Use this to authenticate requests
 let authenticate (request : Request) = 
