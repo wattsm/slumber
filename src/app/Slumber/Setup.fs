@@ -7,8 +7,6 @@ open Slumber.Framework
 ///Contains functions for generating Slumber configuration in a fluent style
 module Setup = 
 
-    //TODO Is OperationContext binding obsolete?
-
     ///An exception used for errors during setup
     type SetupException (message : String) = 
         inherit Exception (message)

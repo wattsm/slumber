@@ -41,7 +41,7 @@ module Render =
         let asyncWriteHeaders (headers : NameValueCollection) args = 
 
             let setHeader key value = 
-                headers.[(string key)] <- value
+                headers.[key] <- value
 
             async {
 
