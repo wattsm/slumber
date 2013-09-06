@@ -14,7 +14,7 @@ module ``Discovery facts`` =
     open Framework
     open Setup.Bindings
 
-    let teapot (_ : string option) = 
+    let teapot (_ : obj option) = 
         OperationResult.StatusOnly 418 //Teapot
 
     let endpoint = 
@@ -284,7 +284,7 @@ module ``Discovery facts`` =
 
                 let isStringMessage result = 
                     match result with
-                    | Success result -> result.Binding.MessageType = (Some typedefof<String>)
+                    | Success result -> result.Binding.MessageType = (Some typedefof<obj>)
                     | _ -> false
 
                 (endpoint, [])
@@ -620,7 +620,7 @@ module ``Discovery facts`` =
                     match args.Reader with
                     | Some reader -> 
                         reader.ContentType = DefaultMediaType
-                            && reader.MessageType = typedefof<String>
+                            && reader.MessageType = typedefof<obj>
                     | _ -> false
                 | _ -> false
 

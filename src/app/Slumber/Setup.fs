@@ -21,736 +21,231 @@ module Setup =
     [<AutoOpen>]
     module Bindings = 
 
-        ///Contains wrappers which convert functions into operations
-        module private Wrappers = 
-
-            open HandyFS.Types
-            open HandyFS.Types.Summaries
-
-            //NOTE These types exist purely as the way that functions are wrapped as operations
-            //requires reflection. 
-
-            ///Interface defining a wrapper exposing an operation
-            type IOperationWrapper =                 
-                abstract member Invoke : OperationContext -> OperationResult
-
-            ///A basic wrapper
-            type OperationWrapper (operation : Operation) = 
-                interface IOperationWrapper  with
-
-                    member this.Invoke context = 
-                        operation context
-
-            //TODO Revisit module and function names
-
-            ///Contains helper functions for wrapping functions 
-            [<AutoOpen>]
-            module Helpers = 
-
-                ///Casts a message to a given type
-                let getMessageAs<'TMessage> (context : OperationContext) = 
-                    match context.Message with
-                    | None -> None
-                    | Some value -> Some (value :?> 'TMessage)
-
-                ///Calls a function with the operation message or returns the given status code
-                let withMessageOr<'TMessage> context f statusCode = 
-                    match (context |> getMessageAs<'TMessage>) with
-                    | None -> OperationResult.StatusOnly statusCode
-                    | Some message -> f message
-
-                ///Calls a function with a message and returns the default status code
-                let returningNothing f message = 
-                    f message
-                    OperationResult.Empty
-
-                ///Calls a function with a message and returns a resource with the default status code
-                let returningResource f message = 
-                    message
-                    |> f
-                    |> OperationResult.ResourceOnly
-                    
-                ///Converts an optional resource to a result
-                let getOptionalResult resource = 
-                    match resource with
-                    | Some resource' -> OperationResult.ResourceOnly resource'
-                    | _ -> OperationResult.Empty    
-                    
-                ///Calls a function with a message and returns an optional resource with the default status code
-                let returningOptionalResource f = 
-                    f >> getOptionalResult
-
-                ///Selects the appropriate wrapper based on the input and result types
-                let getWrapperType inputType resultType (forUnit, forOptional, forResource, forResult) = 
-                    match (getTypeGroup resultType) with
-                    | Unit' -> forUnit inputType
-                    | Optional resultType' -> 
-                        if (isType<OperationResult> resultType') then
-                            raise (NotSupportedException ( "Operations returning an OperationResult cannot mark them as optional."))
-                        else
-                            forOptional inputType resultType'
-                    | Definite ->
-                        if (isType<OperationResult> resultType) then
-                            forResult inputType
-                        else
-                            forResource inputType resultType
-
-            ///Functions for creating operations which accept no input
-            [<RequireQualifiedAccess>]
-            module NoMessage = 
-
-                [<AutoOpen>]
-                module Functions = 
-
-                    ///Creates a unit to unit operation
-                    let toUnit (f : unit -> unit) =                     
-                        fun (_ : OperationContext) ->
-
-                            f ()
-
-                            OperationResult.Empty                
-                    
-                    ///Creates a unit to resource operation
-                    let toResource<'TResource> (f : unit -> 'TResource) = 
-                        fun (_ : OperationContext) ->
-                            f ()
-                            |> OperationResult.ResourceOnly      
-                    
-                    ///Creates a unit to optional resource operation
-                    let toOptionalResource<'TResource> (f : unit -> 'TResource option) =     
-                        fun (_ : OperationContext) ->
-                            match (f ()) with
-                            | Some resource -> OperationResult.ResourceOnly resource
-                            | _ -> OperationResult.Empty    
-
-                    ///Creates a unit to operation result operation
-                    let toResult (f : unit -> OperationResult) = 
-                        fun (_ : OperationContext) ->
-                            f ()     
-
-                [<AutoOpen>]
-                module Types = 
-
-                    ///A wrapper for unit to unit functions
-                    type UnitWrapper (f) = 
-                        inherit OperationWrapper (toUnit f)
-
-                    ///A wrapper for unit to resource functions
-                    type ResourceWrapper<'TResource> (f : unit -> 'TResource) = 
-                        inherit OperationWrapper (toResource f)
-
-                    ///A wrapper for unit to optional resource functions
-                    type OptionalResourceWrapper<'TResource> (f : unit -> 'TResource option) = 
-                        inherit OperationWrapper (toOptionalResource f)
-                        
-                    ///A wrapper for unit to result functions
-                    type ResultWrapper (f) = 
-                        inherit OperationWrapper (toResult f)             
-
-                ///Functions which create wrapper types for operations accepting no message
-                let private wrapperTypes = 
-                    (
-                        (fun _ -> typeof<UnitWrapper>),
-                        (fun _ output -> makeGenericType typedefof<OptionalResourceWrapper<_>> [ output ]),
-                        (fun _ output -> makeGenericType typedefof<ResourceWrapper<_>> [ output ]),
-                        (fun _ -> typeof<ResultWrapper>)
-                    )
-
-                ///Gets the appropriate wrapper type for a given result type
-                let getWrapperType' resultType = 
-                    getWrapperType
-                    <| typeof<Unit>
-                    <| resultType
-                    <| wrapperTypes
-
-            ///Functions for creating operations which accept a message
-            [<RequireQualifiedAccess>]
-            module RequiredMessage = 
-
-                [<AutoOpen>]
-                module Functions = 
-
-                    ///Creates a message to unit operation
-                    let toUnit<'TMessage> (f : 'TMessage -> unit) = 
-                        fun context ->
-                            withMessageOr<'TMessage>
-                            <| context
-                            <| returningNothing f
-                            <| StatusCodes.BadRequest
-
-                    ///Creates a message to resource operation
-                    let toResource<'TMessage, 'TResource> (f : 'TMessage -> 'TResource) = 
-                        fun context ->
-                            withMessageOr<'TMessage>
-                            <| context
-                            <| returningResource f
-                            <| StatusCodes.BadRequest 
-
-                    ///Creates a message to optional resource operation
-                    let toOptionalResource<'TMessage, 'TResource> (f : 'TMessage -> 'TResource option) = 
-                        fun context ->
-                            withMessageOr<'TMessage>
-                            <| context
-                            <| returningOptionalResource f
-                            <| StatusCodes.BadRequest
-
-                    ///Creates a message to operation result operation
-                    let toResult<'TMessage> (f : 'TMessage -> OperationResult) = 
-                        fun context -> 
-                            withMessageOr<'TMessage>
-                            <| context
-                            <| f
-                            <| StatusCodes.BadRequest
-
-                [<AutoOpen>]
-                module Types = 
-
-                    ///Wrapper for a message to unit function
-                    type UnitWrapper<'TMessage> (f : 'TMessage -> unit) =
-                        inherit OperationWrapper (toUnit f)
-
-                    ///Wrapper for a message to resource function
-                    type ResourceWrapper<'TMessage, 'TResource> (f : 'TMessage -> 'TResource) = 
-                        inherit OperationWrapper (toResource f)
-
-                    ///Wrapper for a message to optional resource function
-                    type OptionalResourceWrapper<'TMessage, 'TResource> (f : 'TMessage -> 'TResource option) = 
-                        inherit OperationWrapper (toOptionalResource f)
-
-                    ///Wrapper for a message to result function
-                    type ResultWrapper<'TMessage> (f : 'TMessage -> OperationResult) = 
-                        inherit OperationWrapper (toResult f)
-
-                ///Functions which create wrapper types for operations accepting a message
-                let private wrapperTypes = 
-                    (
-                        (fun input -> makeGenericType typedefof<UnitWrapper<_>> [ input ]),
-                        (fun input output -> makeGenericType typedefof<OptionalResourceWrapper<_, _>> [ input; output ]),
-                        (fun input output -> makeGenericType typedefof<ResourceWrapper<_, _>> [ input; output ]),
-                        (fun input -> makeGenericType typedefof<ResultWrapper<_>> [ input ])
-                    )
-
-                ///Gets the appropriate wrapper type for a given input and result type
-                let getWrapperType' inputType resultType = 
-                    getWrapperType
-                    <| inputType
-                    <| resultType
-                    <| wrapperTypes
-
-            ///Functions for creating operations which accept an optional message
-            [<RequireQualifiedAccess>]
-            module OptionalMessage =
-
-                [<AutoOpen>]
-                module Functions = 
-
-                    ///Creates an optional message to unit operation
-                    let toUnit<'TMessage> (f : 'TMessage option -> unit) = 
-                        fun (context : OperationContext) ->
-
-                            context
-                            |> getMessageAs<'TMessage>
-                            |> f
-
-                            OperationResult.Empty
-
-                    ///Creates an optional message to resource operation
-                    let toResource<'TMessage, 'TResource> (f : 'TMessage option -> 'TResource) = 
-                        fun context ->
-                            context
-                            |> getMessageAs<'TMessage>
-                            |> f
-                            |> OperationResult.ResourceOnly
-
-                    ///Creates an optional message to optional resource operation
-                    let toOptionalResource<'TMessage, 'TResource> (f : 'TMessage option -> 'TResource option) = 
-                        fun context ->
-                            context
-                            |> getMessageAs<'TMessage>
-                            |> f
-                            |> getOptionalResult
-
-                    ///Creates an optional message to result operation
-                    let toResult<'TMessage> (f : 'TMessage option -> OperationResult) =
-                        fun context ->
-                            context
-                            |> getMessageAs<'TMessage>
-                            |> f
-
-                [<AutoOpen>]
-                module Types = 
-                
-                    ///Wraps an optional message to unit function
-                    type UnitWrapper<'TMessage> (f : 'TMessage option -> unit) = 
-                        inherit OperationWrapper (toUnit f)
-
-                    ///Wraps an optional message to resource function
-                    type ResourceWrapper<'TMessage, 'TResource> (f : 'TMessage option -> 'TResource) =
-                        inherit OperationWrapper (toResource f)
-
-                    ///Wraps an optional message to optional resource function
-                    type OptionalResourceWrapper<'TMessage, 'TResource> (f : 'TMessage option -> 'TResource option) = 
-                        inherit OperationWrapper (toOptionalResource f)
-
-                    ///Wraps an optional message to result function
-                    type ResultWrapper<'TMessage> (f : 'TMessage option -> OperationResult) = 
-                        inherit OperationWrapper (toResult f)
-
-                ///Functions which create wrapper types for operations accepting an optional message
-                let private wrapperTypes = 
-                    (
-                        (fun input -> makeGenericType typedefof<UnitWrapper<_>> [ input ]),
-                        (fun input output -> makeGenericType typedefof<OptionalResourceWrapper<_, _>> [ input; output ]),
-                        (fun input output -> makeGenericType typedefof<ResourceWrapper<_, _>> [ input; output ]),
-                        (fun input -> makeGenericType typedefof<ResultWrapper<_>> [ input ])
-                    )
-
-                ///Gets the appropriate wrapper type for a given input and result type
-                let getWrapperType' inputType resultType = 
-                    getWrapperType
-                    <| inputType
-                    <| resultType
-                    <| wrapperTypes
-
-            ///Functions and types for creates operations which accept an operation context
-            [<RequireQualifiedAccess>]
-            module Context = 
-
-                [<AutoOpen>]
-                module Functions = 
-               
-                    ///Creates a context to unit operation
-                    let toUnit (f : OperationContext -> unit) = 
-                        fun context ->
-
-                            f context
-
-                            OperationResult.Empty
-
-                    ///Creates a context to resource operation
-                    let toResource<'TResource> (f : OperationContext -> 'TResource) = 
-                        fun context -> 
-
-                            context
-                            |> f
-                            |> OperationResult.ResourceOnly
-
-                    ///Creates a context to optional resource operation
-                    let toOptionalResource<'TResource> (f : OperationContext -> 'TResource option) = 
-                        fun context -> 
-                            context
-                            |> f
-                            |> getOptionalResult  
-
-                [<AutoOpen>]
-                module Types = 
-
-                    ///Wrapper for context to unit functions
-                    type UnitWrapper (f : OperationContext -> unit) = 
-                        inherit OperationWrapper (toUnit f)
-
-                    ///Wrapper for context to resource functions
-                    type ResourceWrapper<'TResource> (f : OperationContext -> 'TResource) = 
-                        inherit OperationWrapper (toResource f)
-                        
-                    ///Wrapper for context to optional resource functions
-                    type OptionalResourceWrapper<'TResource> (f : OperationContext -> 'TResource option) =
-                        inherit OperationWrapper (toOptionalResource f)
-
-                ///Functions which create wrapper types for operations accepting an operation context
-                let private wrapperTypes = 
-                    (
-                        (fun _ -> typeof<UnitWrapper>),
-                        (fun _ output -> makeGenericType typedefof<OptionalResourceWrapper<_>> [ output ]),
-                        (fun _ output -> makeGenericType typedefof<ResourceWrapper<_>> [ output ]),
-                        (fun _ -> typeof<OperationWrapper>)
-                    )
-
-                ///Gets the appropriate wrapper type for a given result type
-                let getWrapperType' resultType = 
-                    getWrapperType
-                    <| typeof<OperationContext>
-                    <| resultType
-                    <| wrapperTypes
-
-            ///Functions and types for creating operations which accept a message and metadata tuple
-            [<RequireQualifiedAccess>]
-            module MetadataTuple = 
-
-                type Args<'TMessage> = 'TMessage * OperationMetadata
-
-                [<AutoOpen>]
-                module Functions = 
-
-                    ///Creates a tuple to unit operation
-                    let toUnit (f : Args<'TMessage> -> unit) =
-                        fun (context : OperationContext) ->
-
-                            let f' message = 
-                                returningNothing
-                                <| f
-                                <| (message, context.Metadata)
-
-                            withMessageOr<'TMessage>
-                            <| context
-                            <| f'
-                            <| StatusCodes.BadRequest
-
-                    ///Creates a tuple to resource operation
-                    let toResource (f : Args<'TMessage> -> 'TResource) =
-                        fun (context : OperationContext) ->
-
-                            let f' message = 
-                                returningResource
-                                <| f
-                                <| (message, context.Metadata)
-
-                            withMessageOr<'TMessage>
-                            <| context
-                            <| f'
-                            <| StatusCodes.BadRequest
-
-                    ///Creates a tuple to optional resource operation
-                    let toOptionalResource (f : Args<'TMessage> -> 'TResource option) = 
-                        fun (context : OperationContext) ->
-
-                            let f' message = 
-                                returningOptionalResource
-                                <| f
-                                <| (message, context.Metadata)
-
-                            withMessageOr<'TMessage>
-                            <| context
-                            <| f'
-                            <| StatusCodes.BadRequest
-
-                    ///Creates a tuple to operation result operation
-                    let toResult (f : Args<'TMessage> -> OperationResult) =
-                        fun (context : OperationContext) ->
-                        
-                            let f' message = 
-                                f (message, context.Metadata)
-
-                            withMessageOr<'TMessage>
-                            <| context
-                            <| f'
-                            <| StatusCodes.BadRequest
-
-                [<AutoOpen>]
-                module Types = 
-
-                    ///Wrapper for tuple to unit operations
-                    type UnitWrapper<'TMessage> (f : Args<'TMessage> -> unit) =
-                        inherit OperationWrapper (toUnit f)
-
-                    ///Wrapper for tuple to resource operations
-                    type ResourceWrapper<'TMessage, 'TResource> (f : Args<'TMessage> -> 'TResource) = 
-                        inherit OperationWrapper (toResource f)
-
-                    ///Wrapper for tuple to optional resource operations
-                    type OptionalResourceWrapper<'TMessage, 'TResource> (f : Args<'TMessage> -> 'TResource option) = 
-                        inherit OperationWrapper (toOptionalResource f)
-
-                    ///Wrapper for tuple to operation result operations
-                    type ResultWrapper<'TMessage> (f : Args<'TMessage> -> OperationResult) = 
-                        inherit OperationWrapper (toResult f)
-
-                ///Functions which create wrapper types for operations accepting an optional message and metadata
-                let private wrapperTypes = 
-                    (
-                        (fun input -> makeGenericType typedefof<UnitWrapper<_>> [ input; ]),
-                        (fun input output -> makeGenericType typedefof<OptionalResourceWrapper<_, _>> [ input; output; ]),
-                        (fun input output -> makeGenericType typedefof<ResourceWrapper<_, _>> [ input; output; ]),
-                        (fun input -> makeGenericType typedefof<ResultWrapper<_>> [ input; ])
-                    )
-
-                ///Gets the appropriate wrapper type for a given input type and result type
-                let getWrapperType' inputType resultType = 
-                    getWrapperType
-                    <| inputType
-                    <| resultType
-                    <| wrapperTypes
-
-            ///Functions and types for creating operations which accept an optional message and metadata tuple
-            [<RequireQualifiedAccess>]
-            module OptionalMetadataTuple = 
-
-                type Args<'TMessage> = 'TMessage option * OperationMetadata
-
-                let private usingMetadataFrom context f = 
-                    fun message ->
-                        f (message, context.Metadata)
-
-                [<AutoOpen>]
-                module Functions = 
-
-                    ///Creates a tuple to unit operation
-                    let toUnit (f : Args<'TMessage> -> unit) =
-                        fun (context : OperationContext) ->
-
-                            let f' = usingMetadataFrom context f
-
-                            context
-                            |> getMessageAs<'TMessage>
-                            |> f'
-
-                            OperationResult.Empty
-
-                    ///Creates a tuple to resource operation
-                    let toResource (f : Args<'TMessage> -> 'TResource) =
-                        fun (context : OperationContext) ->
-
-                            let f' = usingMetadataFrom context f
-
-                            context
-                            |> getMessageAs<'TMessage>
-                            |> f'
-                            |> OperationResult.ResourceOnly
-
-                    ///Creates a tuple to optional resource operation
-                    let toOptionalResource (f : Args<'TMessage> -> 'TResource option) = 
-                        fun (context : OperationContext) ->
-
-                            let f' = usingMetadataFrom context f
-
-                            context
-                            |> getMessageAs<'TMessage>
-                            |> f'
-                            |> getOptionalResult
-
-                    ///Creates a tuple to operation result operation
-                    let toResult (f : Args<'TMessage> -> OperationResult) =
-                        fun (context : OperationContext) ->
-                        
-                            let f' = usingMetadataFrom context f
-
-                            context
-                            |> getMessageAs<'TMessage>
-                            |> f'
-
-                [<AutoOpen>]
-                module Types = 
-
-                    ///Wrapper for tuple to unit operations
-                    type UnitWrapper<'TMessage> (f : Args<'TMessage> -> unit) =
-                        inherit OperationWrapper (toUnit f)
-
-                    ///Wrapper for tuple to resource operations
-                    type ResourceWrapper<'TMessage, 'TResource> (f : Args<'TMessage> -> 'TResource) = 
-                        inherit OperationWrapper (toResource f)
-
-                    ///Wrapper for tuple to optional resource operations
-                    type OptionalResourceWrapper<'TMessage, 'TResource> (f : Args<'TMessage> -> 'TResource option) = 
-                        inherit OperationWrapper (toOptionalResource f)
-
-                    ///Wrapper for tuple to operation result operations
-                    type ResultWrapper<'TMessage> (f : Args<'TMessage> -> OperationResult) = 
-                        inherit OperationWrapper (toResult f)
-
-                ///Functions which create wrapper types for operations accepting an optional message and metadata
-                let private wrapperTypes = 
-                    (
-                        (fun input -> makeGenericType typedefof<UnitWrapper<_>> [ input; ]),
-                        (fun input output -> makeGenericType typedefof<OptionalResourceWrapper<_, _>> [ input; output; ]),
-                        (fun input output -> makeGenericType typedefof<ResourceWrapper<_, _>> [ input; output; ]),
-                        (fun input -> makeGenericType typedefof<ResultWrapper<_>> [ input; ])
-                    )
-
-                ///Gets the appropriate wrapper type for a given input type and result type
-                let getWrapperType' inputType resultType = 
-                    getWrapperType
-                    <| inputType
-                    <| resultType
-                    <| wrapperTypes
-
-            ///Functions for creating operations which accept only metadata
-            [<RequireQualifiedAccess>]
-            module MetadataOnly = 
-
-                [<AutoOpen>]
-                module Functions = 
-
-                    ///Creates a metadata to unit operation
-                    let toUnit (f : OperationMetadata -> unit) =                     
-                        fun (ctx : OperationContext) ->
-
-                            f ctx.Metadata
-
-                            OperationResult.Empty                
-                    
-                    ///Creates a metadata to resource operation
-                    let toResource<'TResource> (f : OperationMetadata -> 'TResource) = 
-                        fun (ctx : OperationContext) ->
-                            ctx.Metadata
-                            |> f
-                            |> OperationResult.ResourceOnly      
-                    
-                    ///Creates a metadata to optional resource operation
-                    let toOptionalResource<'TResource> (f : OperationMetadata -> 'TResource option) =     
-                        fun (ctx : OperationContext) ->
-                            match (f ctx.Metadata) with
-                            | Some resource -> OperationResult.ResourceOnly resource
-                            | _ -> OperationResult.Empty    
-
-                    ///Creates a metadata to operation result operation
-                    let toResult (f : OperationMetadata -> OperationResult) = 
-                        fun (ctx : OperationContext) ->
-                            f ctx.Metadata     
-
-                [<AutoOpen>]
-                module Types = 
-
-                    ///A wrapper for metadata to unit functions
-                    type UnitWrapper (f : OperationMetadata -> unit) = 
-                        inherit OperationWrapper (toUnit f)
-
-                    ///A wrapper for metadata to resource functions
-                    type ResourceWrapper<'TResource> (f : OperationMetadata -> 'TResource) = 
-                        inherit OperationWrapper (toResource f)
-
-                    ///A wrapper for metadata to optional resource functions
-                    type OptionalResourceWrapper<'TResource> (f : OperationMetadata -> 'TResource option) = 
-                        inherit OperationWrapper (toOptionalResource f)
-                        
-                    ///A wrapper for metadata to result functions
-                    type ResultWrapper (f : OperationMetadata -> OperationResult) = 
-                        inherit OperationWrapper (toResult f)             
-
-                ///Functions which create wrapper types for operations accepting metadata
-                let private wrapperTypes = 
-                    (
-                        (fun _ -> typeof<UnitWrapper>),
-                        (fun _ output -> makeGenericType typedefof<OptionalResourceWrapper<_>> [ output ]),
-                        (fun _ output -> makeGenericType typedefof<ResourceWrapper<_>> [ output ]),
-                        (fun _ -> typeof<ResultWrapper>)
-                    )
-
-                ///Gets the appropriate wrapper type for a given result type
-                let getWrapperType' resultType = 
-                    getWrapperType
-                    <| typeof<Unit>
-                    <| resultType
-                    <| wrapperTypes
-
-            //Union categorising operation input types
-            type InputType =                 
-                | Message of (Type * bool)
-                | MetadataTuple of (Type * bool)
-                | Metadata
-                | Context
-
-            ///True if a type is a tuple of a message type and OperationMetadata
-            let isMetadataTuple type' = 
-                if (isGenericType<_ * _> type') then
-                    Array.get (type'.GetGenericArguments ()) 1
-                    |> isType<OperationMetadata>                    
-                else
-                    false
-
-            ///Describes a type as an operation input
-            let getInputType (type' : Type) = 
-                match (getTypeGroup type') with
-                | Unit' -> None
-                | Optional optionalType -> 
-                    if (isType<OperationContext> optionalType) then
-                        raise (NotSupportedException ("Operations accepting an OperationContext cannot mark them as optional."))
-
-                    if (isType<OperationMetadata> optionalType) then 
-                        raise (NotSupportedException ("Operations accepting OperationMetadata cannot mark them as optional."))
-
-                    if (isMetadataTuple optionalType) then
-                        raise (NotSupportedException ("Operations accepting a metadata tuple cannot mark it as optional."))
-
-                    Some (Message (optionalType, true))
-                | Definite ->
-                    if (isMetadataTuple type') then
-
-                        let messageType = 
-                            type'.GetGenericArguments ()
-                            |> Array.head
-
-                        match (getTypeGroup messageType) with
-                        | Optional messageType' -> Some (MetadataTuple (messageType', true))
-                        | Definite -> Some (MetadataTuple (messageType, false))
-                        | _ -> raise (NotSupportedException ("Operations accepting a metadata tuple cannot use a unit as the message type."))
-                    
-                    else if (isType<OperationContext> type') then
-                        Some Context
-
-                    else if (isType<OperationMetadata> type') then
-                        Some Metadata
-                        
-                    else                        
-                        Some (Message (type', false))                    
+        open System.Reflection
+        open HandyFS.Types
+        open HandyFS.Types.Summaries
+
+        let [<Literal>] FunctionInvokeMethodName = "Invoke"
+
+        ///Union describing possible binding target types
+        type TargetType =
+            | Function
+            | Other
+
+        ///Gets the target type for a given type
+        let rec getTargetType (type' : Type) = 
+            if (isGenericType<Microsoft.FSharp.Core.FSharpFunc<_, _>> type') then
+                Function
+            else if (isType<Object> type'.BaseType) then
+                Other
+            else
+                getTargetType type'.BaseType
+
+        ///Union describing supported types of function arguments
+        type ArgumentType = 
+            | Unit'
+            | Message of (bool * Type)
+            | Parameter of (String * bool * Type)
+            | Metadata
+
+        ///Gets the argument type for a given type
+        let getArgumentType (parameter : ParameterInfo) = 
             
-            ///Wraps a function, creating an operation based on its parameters
-            let wrap<'TInput, 'TOutput> (f : 'TInput -> 'TOutput) = 
+            let summary = 
+                getTypeSummary parameter.ParameterType
 
-                //TODO This function is extremely hacky and smells a lot. There must be a better way of doing this.
-                //Member overloading wasn't quite up to the task due to the fact that functions matching 'x option -> 'y
-                //will also match 'x -> 'y. A 'x not option would be handy.
+            if (isUnit summary.BaseType) then
 
-                (**
-                    NOTE This function will wrap functions as operations.
+                Unit'
 
-                    The following input types are explicitly supported:
-                    - unit
-                    - OperationContext
-                    - 'TMessage
-                    - 'TMessage option
-                    - 'TMessage * OperationMetadata
-                    - 'TMessage option * OperationMetdata
+            else if (isType<OperationMetadata> summary.BaseType) then
 
-                    The following result types are supported:
-                    - unit
-                    - OperationResult
-                    - 'TResource
-                    - 'TResource option
-                **)
+                if summary.IsOptional then
+                    invalidSetup "Optional OperationMetadata is not supported."
 
-                let inputType = typeof<'TInput>
-                let resultType = typeof<'TOutput>                                               
+                Metadata
 
-                let wrapperType, messageType = 
-                    match (getInputType inputType) with
-                    | None -> (NoMessage.getWrapperType' resultType, None)
-                    | Some value ->   
-                        match value with
-                        | Message (messageType, true) -> (OptionalMessage.getWrapperType' messageType resultType, Some messageType)
-                        | Message (messageType, false) -> (RequiredMessage.getWrapperType' messageType resultType, Some messageType)
-                        | MetadataTuple (messageType, true) -> (OptionalMetadataTuple.getWrapperType' messageType resultType, Some messageType)
-                        | MetadataTuple (messageType, false) -> (MetadataTuple.getWrapperType' messageType resultType, Some messageType)
-                        | Metadata -> (MetadataOnly.getWrapperType' resultType, None)
-                        | Context -> (Context.getWrapperType' resultType, None)
+            else if (summary.BaseType.IsValueType || isType<String> summary.BaseType) then
 
-                let wrapper = 
+                Parameter (parameter.Name, summary.IsOptional, summary.BaseType)
 
-                    //TODO There must be a better way to do this. Activator.CreateInstance seems to be very literal about parameter types.
+            else
 
-                    let constructor' = 
-                        wrapperType.GetConstructor ([| f.GetType() |])
+                Message (summary.IsOptional, summary.BaseType)
 
-                    //TODO Exception for null constructor; "No suitable wrapper could be found for your function". Is this even possible? Types which cannot be deserialised will be trapped at runtime.
+        ///Gets the argument types for a given method
+        let getArgumentTypes (method' : MethodInfo) = 
+            method'.GetParameters ()
+            |> Array.Parallel.map getArgumentType
 
-                    constructor'.Invoke ([| f |]) :?> IOperationWrapper
+        ///Gets the message type from an array of argument types
+        let getMessageType =
+            Array.tryPick (fun argType ->
+                match argType with
+                | Message (_, messageType) -> Some messageType
+                | _ -> None
+            )
 
-                let operation = 
-                    fun context -> 
-                        wrapper.Invoke context
+        ///Gets the value of an argument from a given context
+        let getArgumentValue context argType =
 
-                (operation, messageType)
+            let getMessage isOptional messageType = 
+                match context.Message with
+                | None -> 
+                    if (not isOptional) then
+                        invalidOp "A message is required but is not present."
+                
+                    makeNone messageType
 
-        ///Creates a new binding based on a function
-        let bind verb f = 
-            let operation, messageType = Wrappers.wrap f
-            in
-                {
-                    Binding.Empty
-                    with
-                        Verb = verb;
-                        Operation = operation;
-                        MessageType = messageType;
-                }
+                | Some message -> 
+                    if isOptional then
+                        makeSome messageType message
+                    else
+                        message
+
+            let getParameter isOptional name parameterType = 
+                match (tryGetParameter name context.Metadata) with
+                | None -> 
+                    if (not isOptional) then
+                        invalidOp (String.Format ("The parameter {0} is required but is not present.", name))
+
+                    makeNone parameterType
+
+                | Some value ->
+
+                    ///TODO Special cases (e.g. date/times)
+
+                    let value' =
+                        Convert.ChangeType (value, parameterType)
+
+                    if isOptional then
+                        makeSome parameterType value'
+                    else
+                        value'
+
+            match argType with
+            | Unit' -> box ()
+            | Metadata -> box context.Metadata
+            | Message (isOptional, messageType) -> getMessage isOptional messageType
+            | Parameter (name, isOptional, parameterType) -> getParameter isOptional name parameterType
+
+        ///Gets the values of arugments from a given context
+        let getArgumentValues context =
+            Array.Parallel.map (getArgumentValue context)
+
+        ///Union describing supported return types
+        type ReturnType = 
+            | Void
+            | Resource of (bool * Type)
+            | Result
+
+        ///Gets the return type of a method
+        let getReturnType (method' : MethodInfo) = 
+            
+            let summary = 
+                getTypeSummary method'.ReturnType
+
+            if (isUnit summary.BaseType) then
+                
+                Void
+
+            else if (isType<OperationResult> summary.BaseType) then
+
+                if summary.IsOptional then
+                    invalidSetup "Optional OperationResult is not supported."
+
+                Result
+
+            else
+
+                Resource (summary.IsOptional, summary.BaseType)
+
+        ///Gets the invoke method for a function type
+        let getFunctionInvokeMethod (type' : Type) = 
+
+            let methods = 
+                type'.GetMethods ()
+                |> Array.filter (fun method' -> method'.Name = FunctionInvokeMethodName)
+                |> Array.sortBy (fun method' -> method'.GetParameters () |> Array.length)
+
+            if (Array.isEmpty methods) then
+                None
+            else
+                Some (methods.[methods.Length - 1])
+
+        ///Converts an optional resource from Some<T> to Some<obj>
+        let convertOptionalResource resourceType value = 
+
+            //NOTE That the IsSome property of Option<T> is compiled as an
+            //indexed property, and the index value is what is actually inspected.
+
+            //value will be null if operation returned None, so cannot use value.GetType ()
+            let optionalType = 
+                makeGenericType typedefof<Option<_>> [ resourceType ] 
+
+            let isSomeProperty = 
+                optionalType.GetProperty ("IsSome")
+
+            let isSome = 
+                isSomeProperty.GetValue (null, [| value |]) :?> bool
+
+            if isSome then
+
+                let valueProperty = 
+                    optionalType.GetProperty ("Value")
+
+                Some (valueProperty.GetValue (value))
+            else
+                None
+
+        ///Gets an operation result for the given value
+        let getOperationResult (value : obj) returnType = 
+            match returnType with
+            | Void -> OperationResult.Empty
+            | Result -> value :?> OperationResult
+            | Resource (isOptional, resourceType) ->
+
+                let resource = 
+                    if isOptional then
+                        convertOptionalResource resourceType value
+                    else
+                        Some value
+
+                { OperationResult.Empty with Resource = resource; }
+
+        ///Binds a target to the given verb
+        let bind verb target = 
+            
+            let type' = getType target
+
+            match (getTargetType type') with
+            | Other -> invalidSetup "Only function types are supported as binding targets."
+            | Function ->
+                match (getFunctionInvokeMethod type') with
+                | Some method' ->
+
+                    let argTypes = getArgumentTypes method'
+                    let messageType = getMessageType argTypes
+                    let returnType = getReturnType method'
+
+                    let op (context : OperationContext) =
+
+                        let argValues = getArgumentValues context argTypes
+                        let returnValue = method'.Invoke (target, argValues)
+
+                        getOperationResult 
+                        <| returnValue 
+                        <| returnType
+
+                    {
+                        Binding.Empty 
+                        with
+                            MessageType = messageType;
+                            Verb = verb;
+                            Operation = op;
+                    }
+
+                | _ -> invalidOp "Could not locate Invoke method on function type."                
 
         ///Creates a new GET binding
         let get f =  
@@ -941,3 +436,5 @@ module Setup =
                 with
                     Endpoints = endpoints';
             }
+
+    

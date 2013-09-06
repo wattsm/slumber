@@ -76,12 +76,9 @@ module People =
             People = data.Values;
         }
 
-    let getPerson (meta : OperationMetadata) = 
+    let getPerson (id : Int32) = 
         try 
 
-            let id = 
-                getId meta
-        
             let success, person = 
                 data.TryGetValue (id)
                 
@@ -93,7 +90,7 @@ module People =
         with
         | :? FormatException -> OperationResult.StatusOnly 400
 
-    let addPerson (message : PersonMessage, meta : OperationMetadata) = 
+    let addPerson (message : PersonMessage) (meta : OperationMetadata) = 
         
         let id = 
             if (data.Count = 0) then
@@ -129,18 +126,11 @@ module People =
         }
         |> OperationResult.ResourceOnly 
 
-    let deletePerson meta = 
-
-        let id = 
-            getId meta
-
+    let deletePerson id = 
         data.Remove (id) |> ignore
 
-    let updatePerson (update : PersonMessage, meta : OperationMetadata) = 
-
-        let id =
-            getId meta
-                
+    let updatePerson id (update : PersonMessage) = 
+            
         let success, existing =
             data.TryGetValue (id)
 

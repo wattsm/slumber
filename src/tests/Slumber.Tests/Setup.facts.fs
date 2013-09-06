@@ -25,6 +25,197 @@ module ``Setup facts`` =
                 binding.Verb
 
         [<Trait (Traits.Names.Module, ModuleName)>]
+        module ``getTargetType function`` = 
+
+            let private assertIsFunction target = 
+                getTargetType (target.GetType ()) |> should equal Function
+
+            let [<Fact>] ``Correct value returned for function (1)`` () =                 
+                assertIsFunction (fun () -> ())
+
+            let [<Fact>] ``Correct value returned for function (2)`` () = 
+                assertIsFunction (fun (_ : Int32) -> ())
+
+            let [<Fact>] ``Correct value returned for function (3)`` () = 
+                assertIsFunction (fun (_ : Int32) -> "Hello, World")
+                
+            let [<Fact>] ``Correct value returned for function (4)`` () = 
+                assertIsFunction (fun (arg0 : Int32) (arg1 : String) -> ())
+
+            let [<Fact>] ``Correct value returned for function (5)`` () = 
+                assertIsFunction (fun (_ : OperationMetadata) -> ())
+
+            let [<Fact>] ``Correct value returned for function (6)`` () = 
+                assertIsFunction (fun () -> OperationResult.Empty)
+
+        [<Trait (Traits.Names.Module, ModuleName)>]
+        module ``getArgumentType function`` = 
+
+            [<AutoOpen>]
+            module private Helpers = 
+
+                let getArgumentType' (f : 'a -> unit) = 
+                
+                    let type' = f.GetType ()
+                    let invoke = type'.GetMethod ("Invoke")
+                    let parameters = invoke.GetParameters ()
+
+                    getArgumentType (parameters.[parameters.Length - 1])
+
+                let isParameter argType = 
+                    match argType with
+                    | Parameter (_, _, _) -> true
+                    | _ -> false
+
+                let isMessage argType = 
+                    match argType with
+                    | Message (_, _) -> true
+                    | _ -> false
+
+                let isUnit (argType : ArgumentType) = 
+                    match argType with
+                    | Unit' -> true
+                    | _ -> false
+
+                let isMetadata argType = 
+                    match argType with
+                    | Metadata -> true
+                    | _ -> false
+
+                let getParameterName argType = 
+                    match argType with
+                    | Parameter (name, _, _) -> name
+                    | _ -> invalidOp "Not a parameter"
+
+                let getType argType = 
+                    match argType with
+                    | Parameter (_, _, type') -> type'
+                    | Message (_, type') -> type'
+                    | _ -> invalidOp "Not a parameter or message"
+
+                let isOptional argType = 
+                    match argType with
+                    | Parameter (_, isOptional, _) -> isOptional
+                    | Message (isOptional, _) -> isOptional
+                    | _ -> invalidOp "Not a parameter or message"
+
+            let [<Fact>] ``Returns Parameter for value types (1)`` () = 
+                getArgumentType' (fun (_ : Int32) -> ()) |> isParameter |> should be True
+
+            let [<Fact>] ``Returns Parameter for value types (2)`` () = 
+                getArgumentType' (fun (_ : Decimal) -> ()) |> isParameter |> should be True
+
+            let [<Fact>] ``Returns Parameter for value types (3)`` () = 
+                getArgumentType' (fun (_ : Double) -> ()) |> isParameter |> should be True
+
+            let [<Fact>] ``Returns Parameter for value types (4)`` () = 
+                getArgumentType' (fun (_ : DateTime) -> ()) |> isParameter |> should be True
+
+            let [<Fact>] ``Returns Parameter for value types (5)`` () = 
+                getArgumentType' (fun (_ : bool) -> ()) |> isParameter |> should be True
+
+            let [<Fact>] ``Returns Parameter for Strings`` () = 
+                getArgumentType' (fun (_ : String) -> ()) |> isParameter |> should be True
+
+            let [<Fact>] ``Parameter names are set correclty`` () =
+                getArgumentType' (fun (arg : String) -> ()) |> getParameterName |> should equal "arg"
+
+            let [<Fact>] ``Parameter types are set correctly`` () =
+                getArgumentType' (fun (_ : String) -> ()) |> getType |> should equal typeof<String>
+
+            let [<Fact>] ``Optional flag is set correctly for optional parameter types`` () =
+                getArgumentType' (fun (_ : String option) -> ()) |> isOptional |> should be True
+
+            let [<Fact>] ``Optional flag is set correctly for non-optional parameter types`` () =
+                getArgumentType' (fun (_ : String) -> ()) |> isOptional |> should be False
+
+            let [<Fact>] ``Returns Message for complex types`` () =
+                getArgumentType' (fun (_ : obj) -> ()) |> isMessage |> should be True
+
+            let [<Fact>] ``Message types are set correctly`` () =
+                getArgumentType' (fun (_ : obj) -> ()) |> getType |> should equal typeof<obj>
+
+            let [<Fact>] ``Optional flag is set correctly for optional message types`` () =
+                getArgumentType' (fun (_ : obj option) -> ()) |> isOptional |> should be True
+
+            let [<Fact>] ``Optional flag is set correctly for non-optional message types`` () =
+                getArgumentType' (fun (_ : obj) -> ()) |> isOptional |> should be False
+
+            let [<Fact>] ``Returns Unit for unit`` () =
+                getArgumentType' (fun () -> ()) |> isUnit |> should be True
+
+            let [<Fact>] ``Returns Metadata for OperationMetadata`` () =
+                getArgumentType' (fun (_ : OperationMetadata) -> ()) |> isMetadata |> should be True
+
+            let [<Fact>] ``SetupException is thrown for optional OperationMetadata`` () =
+                (fun () ->
+                    getArgumentType' (fun (_ : OperationMetadata option) -> ())
+                    |> ignore
+                ) |> should throw typeof<SetupException>
+           
+        [<Trait (Traits.Names.Module, ModuleName)>]
+        module ``getReturnType function`` = 
+            
+            [<AutoOpen>]
+            module private Helpers = 
+
+                let getReturnType' (f : unit -> 'a) = 
+
+                    let type' = f.GetType ()
+                    let invoke = type'.GetMethod ("Invoke")
+
+                    getReturnType invoke
+
+                let isVoid returnType = 
+                    match returnType with
+                    | Void -> true
+                    | _ -> false
+
+                let isResource returnType = 
+                    match returnType with
+                    | ReturnType.Resource (_, _) -> true
+                    | _ -> false
+
+                let isResult returnType = 
+                    match returnType with
+                    | Result ->  true
+                    | _ -> false
+
+                let isOptional returnType = 
+                    match returnType with
+                    | ReturnType.Resource (isOptional, _) -> isOptional
+                    | _ -> invalidOp "Not a resource"
+
+                let getType returnType = 
+                    match returnType with
+                    | ReturnType.Resource (_, type') -> type'
+                    | _ -> invalidOp "Not a resource"
+
+            let [<Fact>] ``Returns Void for unit`` () =
+                getReturnType' (fun () -> ()) |> isVoid |> should be True
+
+            let [<Fact>] ``Returns Result for OperationResult`` () =
+                getReturnType' (fun () -> OperationResult.Empty) |> isResult |> should be True
+
+            let [<Fact>] ``SetupException is thrown for optional OperationResult`` () =
+                (fun () ->
+                    getReturnType' (fun () -> Some OperationResult.Empty)
+                    |> ignore
+                ) |> should throw typeof<SetupException>
+
+            let [<Fact>] ``Returns Resource for other types`` () =
+                getReturnType' (fun () -> "Hello, World") |> isResource |> should be True
+
+            let [<Fact>] ``Optional flag set correctly for optional resources`` () =
+                getReturnType' (fun () -> Some "Hello, World") |> isOptional |> should be True
+
+            let [<Fact>] ``Optional flag set correctly for non-optional resources`` () =
+                getReturnType' (fun  () -> "Hello, World") |> isOptional |> should be False
+
+            let [<Fact>] ``Type set correctly for resources`` () =
+                getReturnType' (fun () -> "Hello, World") |> getType |> should equal typeof<String>
+
+        [<Trait (Traits.Names.Module, ModuleName)>]
         module ``get function`` = 
 
             let [<Fact>] ``Creates a binding for the GET verb`` () =
@@ -69,148 +260,72 @@ module ``Setup facts`` =
         [<Trait (Traits.Names.Module, ModuleName)>]
         module ``bind function`` = 
 
-            let getMessageType binding = 
-                binding.MessageType
+            [<AutoOpen>]
+            module private Helpers = 
 
-            let bindAndCall f = 
+                let getMessageType binding = 
+                    binding.MessageType
 
-                let binding = 
-                    bind "VERB" f
+                let isPublic binding = 
+                    binding.IsPublic
 
-                let context = 
+                let bindAndCall f = 
+                    
+                    let binding = 
+                        bind "VERB" f
 
-                    let baseUrl = 
-                        Uri ("http://localhost:8080", UriKind.Absolute)
+                    let context = 
 
-                    {
-                        Metadata = 
-                            {
-                                OperationMetadata.Empty
-                                with
-                                    Request = 
-                                        { 
-                                            Request.Empty 
-                                            with
-                                                Url = 
-                                                    {
-                                                        Raw = baseUrl;
-                                                        Path = "/";
-                                                        Query = [];
-                                                        BaseUrl = baseUrl;
-                                                    };
-                                        };
-                            };
-                        Message = (Some (box "Hello, World")); //NOTE This will be passed to message and optional message accepting functions only
-                    }
+                        let baseUrl = 
+                            Uri ("http://localhost:8080", UriKind.Absolute)
 
-                context
-                |> binding.Operation
-                |> ignore
+                        {
+                            Metadata = 
+                                {
+                                    OperationMetadata.Empty
+                                    with
+                                        Request = 
+                                            { 
+                                                Request.Empty 
+                                                with
+                                                    Url = 
+                                                        {
+                                                            Raw = baseUrl;
+                                                            Path = "/";
+                                                            Query = [];
+                                                            BaseUrl = baseUrl;
+                                                        };
+                                            };
+                                };
+                            Message = (Some (box "Hello, World")); //NOTE This will be passed to message and optional message accepting functions only
+                        }
+
+                    context
+                    |> binding.Operation
+
+                let bindAndCall' f = 
+                    bindAndCall f |> ignore
 
             let [<Fact>] ``Message type is set correctly for functions accepting unit`` () =
                 bind "VERB" (fun () -> ()) |> getMessageType |> should be None'<Type>
 
             let [<Fact>] ``Message type is set correctly for functions accepting a message`` () =
-                bind "VERB" (fun (_ : String) -> ()) |> getMessageType |> should be (Some' typeof<String>)
+                bind "VERB" (fun (_ : obj) -> ()) |> getMessageType |> should be (Some' typeof<obj>)
 
             let [<Fact>] ``Message type is set correctly for functions accepting an optional message`` () =
-                bind "VERB" (fun (_ : String option) ->  ()) |> getMessageType |> should be (Some' typeof<String>)
+                bind "VERB" (fun (_ : obj option) ->  ()) |> getMessageType |> should be (Some' typeof<obj>)
 
-            let [<Fact>] ``Message type is set correctly for functions accepting an OperationContext`` () =
-                bind "VERB" (fun (_ : OperationContext) -> ()) |> getMessageType |> should be None'<Type>
+            let [<Fact>] ``Verb is set correctly`` () = 
+                bind "VERB" (fun () -> ()) |> getVerb |> should equal "VERB"
 
-            let [<Fact>] ``Message type is set correctly for functions accepting a metadata tuple`` () =
-                bind "VERB" (fun (_ : (String * OperationMetadata)) -> ()) |> getMessageType |> should be (Some' typeof<String>)
+            let [<Fact>] ``Bindings are private by default`` () =
+                bind "VERB" (fun () -> ()) |> isPublic |> should be False
 
-            let [<Fact>] ``Message type is set correctly for functions accepting an optional metadata tuple`` () =
-                bind "VERB" (fun (_ : (String option * OperationMetadata)) -> ()) |> getMessageType |> should be (Some' typeof<String>)
-
-            let [<Fact>] ``Message type is set correctly for functions accepting OperationMetadata`` () =
-                bind "VERB" (fun (_ : OperationMetadata) -> ()) |> getMessageType |> should be None'<Type>
-
-            //TODO Everythign below here should refer to "input type" instead of "message type" really
-
-            let [<Fact>] ``Message type of optional OperationContext raises NotSupportedException`` () =
-                (fun () -> 
-                    bind "VERB" (fun (_ : OperationContext option) -> ()) 
-                    |> ignore
-                ) |> should throw typeof<NotSupportedException>
-
-            let [<Fact>] ``Resource type of optional OperationResult raises NotSupportedException`` () =
-                (fun () -> 
-                    bind "VERB" (fun () -> (Some OperationResult.Empty)) 
-                    |> ignore
-                ) |> should throw typeof<NotSupportedException>
-
-            let [<Fact>] ``Message type of optional metadata tuple raises NotSupportedException`` () =
-                (fun () ->
-                    bind "VERB" (fun (_ : (String * OperationMetadata) option) -> ()) 
-                    |> ignore
-                ) |> should throw typeof<NotSupportedException>
-
-            let [<Fact>] ``Message type of optional metadata raises NotSupportedException`` () =
-                (fun () ->
-                    bind "VERB" (fun ( _ : OperationMetadata option) -> ())
-                    |> ignore
-                ) |> should throw typeof<NotSupportedException>                 
-
-            let [<Fact>] ``Functions accepting unit and returning unit are wrapped correctly`` () =
+            let [<Fact>] ``Operation calls no op targets`` () =
                 
                 let _called = ref false
 
-                bindAndCall (fun () -> 
-
-                    _called := true
-                    
-                    ()
-                )
-
-                Assert.True (_called.Value)
-                
-            let [<Fact>] ``Functions accepting unit and returning a resource are wrapped correctly`` () =
-                
-                let _called = ref false
-
-                bindAndCall (fun () ->
-
-                    _called := true
-
-                    "Hello, World"
-                )
-
-                Assert.True (_called.Value)
-
-            let [<Fact>] ``Functions accepting unit and returning an optional resource are wrapped correctly`` () =
-                 
-                 let _called = ref false
-
-                 bindAndCall (fun () ->
-
-                    _called := true
-
-                    (Some "Hello, World")
-                 )
-
-                 Assert.True (_called.Value)
-
-            let [<Fact>] ``Functions accepting unit and returning an OperationResult are wrapped correctly`` () =
-                
-                let _called = ref false
-
-                bindAndCall (fun () ->
-
-                    _called := true
-
-                    OperationResult.Empty
-                )
-
-                Assert.True (_called.Value)
-
-            let [<Fact>] ``Functions accepting a message and returning a unit are wrapped correctly`` () =
-                
-                let _called = ref false
-
-                bindAndCall (fun (_ : String) -> 
+                bindAndCall' (fun () -> 
 
                     _called := true
 
@@ -219,50 +334,11 @@ module ``Setup facts`` =
 
                 Assert.True (_called.Value)
 
-            let [<Fact>] ``Functions accepting a message and returning a resource are wrapped correctly`` () =
+            let [<Fact>] ``Operation calls simple targets`` () =
                 
                 let _called = ref false
 
-                bindAndCall (fun (_ : String) ->
-
-                    _called := true
-
-                    "Hello, World"
-                )
-
-                Assert.True (_called.Value)
-
-            let [<Fact>] ``Functions accepting a message and returning an optional resource are wrapped correctly`` () =
-                
-                let _called = ref false
-
-                bindAndCall (fun (_ : String) ->
-                    
-                    _called := true
-
-                    (Some "Hello, World")
-                )
-
-                Assert.True (_called.Value)
-
-            let [<Fact>] ``Functions accepting a message and returning an OperationResult are wrapped correctly`` () =
-                
-                let _called = ref false
-
-                bindAndCall (fun (_ : String) -> 
-                    
-                    _called := true
-
-                    OperationResult.Empty
-                )
-
-                Assert.True (_called.Value)
-                
-            let [<Fact>] ``Functions accepting an optional message and returning a unit are wrapped correctly`` () =
-                
-                let _called = ref false
-
-                bindAndCall (fun (_ : String option) -> 
+                bindAndCall' (fun (_ : Int32 option) -> 
 
                     _called := true
 
@@ -271,50 +347,11 @@ module ``Setup facts`` =
 
                 Assert.True (_called.Value)
 
-            let [<Fact>] ``Functions accepting an optional message and returning a resource are wrapped correctly`` () =
+            let [<Fact>] ``Operation calls complex targets`` () =
                 
                 let _called = ref false
 
-                bindAndCall (fun (_ : String option) ->
-
-                    _called := true
-
-                    "Hello, World"
-                )
-
-                Assert.True (_called.Value)
-
-            let [<Fact>] ``Functions accepting an optional message and returning an optional resource are wrapped correctly`` () =
-                
-                let _called = ref false
-
-                bindAndCall (fun (_ : String option) ->
-                    
-                    _called := true
-
-                    (Some "Hello, World")
-                )
-
-                Assert.True (_called.Value)
-
-            let [<Fact>] ``Functions accepting an optional message and returning an OperationResult are wrapped correctly`` () =
-                
-                let _called = ref false
-
-                bindAndCall (fun (_ : String option) -> 
-                    
-                    _called := true
-
-                    OperationResult.Empty
-                )
-
-                Assert.True (_called.Value)
-
-            let [<Fact>] ``Functions accepting an OperationContext and returning a unit are wrapped correctly`` () =
-                
-                let _called = ref false
-
-                bindAndCall (fun (_ : OperationContext) -> 
+                bindAndCall' (fun (meta : OperationMetadata) (_ : Int32 option) -> 
 
                     _called := true
 
@@ -323,200 +360,28 @@ module ``Setup facts`` =
 
                 Assert.True (_called.Value)
 
-            let [<Fact>] ``Functions accepting an OperationContext and returning a resource are wrapped correctly`` () =
-                
-                let _called = ref false
+            let [<Fact>] ``Correct result is returned for no op targets`` () =
+                bindAndCall (fun () -> ()) |> should equal OperationResult.Empty
 
-                bindAndCall (fun (_ : OperationContext) ->
+            let [<Fact>] ``Correct result is returned for resource returning targets`` () =
 
-                    _called := true
+                let isCorrect result = 
+                    match result.Resource with
+                    | Some value -> value.Equals "Hello, World"
+                    | _ -> false
 
-                    "Hello, World"
-                )
+                bindAndCall (fun () -> "Hello, World")
+                |> isCorrect
+                |> should be True
 
-                Assert.True (_called.Value)
+            let [<Fact>] ``Correct result is returned for optional resource returning targets (Some)`` () =
+                bindAndCall (fun () -> Some "Hello, World") |> should equal (OperationResult.ResourceOnly "Hello, World")
 
-            let [<Fact>] ``Functions accepting an OperationContext and returning an optional resource are wrapped correctly`` () =
-                
-                let _called = ref false
+            let [<Fact>] ``Correct result is returned for optional resource returning targets (None)`` () =
+                bindAndCall (fun  () -> None) |> should equal OperationResult.Empty
 
-                bindAndCall (fun (_ : OperationContext) ->
-                    
-                    _called := true
-
-                    (Some "Hello, World")
-                )
-
-                Assert.True (_called.Value)
-
-            let [<Fact>] ``Functions accepting an OperationContext and returning an OperationResult are wrapped correctly`` () =
-                
-                let _called = ref false
-
-                bindAndCall (fun (_ : OperationContext) -> 
-                    
-                    _called := true
-
-                    OperationResult.Empty
-                )
-
-                Assert.True (_called.Value)
-
-            let [<Fact>] ``Functions accepting a tuple of a message and OperationMetadata and returning a unit are wrapped correctly`` () =
-                
-                let _called = ref false
-
-                bindAndCall (fun (args : String * OperationMetadata) ->
-
-                    _called := true
-
-                    ()
-                )
-
-                Assert.True (_called.Value)
-
-            let [<Fact>] ``Functions accepting a tuple of a message and OperationMetadata and returning a resource are wrapped correctly`` () =
-                
-                let _called  = ref false
-
-                bindAndCall (fun (args : String * OperationMetadata) ->
-                    
-                    _called := true
-
-                    "Hello, World"
-                )
-
-                Assert.True (_called.Value)
-
-            let [<Fact>] ``Functions accepting a tuple of a message and OperationMetadata and returning an optional resource are wrapped correctly`` () =
-                
-                let _called = ref false
-
-                bindAndCall (fun (args : String * OperationMetadata) ->
-
-                    _called := true
-
-                    Some ("Hello, World")
-                )
-
-                Assert.True (_called.Value)
-
-            let [<Fact>] ``Functions accepting a tuple of a message and OperationMetadata and returning an OperationResult are wrapped correctly`` () =
-                
-                let _called = ref false
-
-                bindAndCall (fun (args : String * OperationMetadata) ->
-
-                    _called := true
-
-                    OperationResult.Empty
-                )
-
-                Assert.True (_called.Value)
-
-            let [<Fact>] ``Functions accepting a tuple of an optional message and OperationMetadata and returning a unit are wrapped correctly`` () =
-                
-                let _called = ref false
-
-                bindAndCall (fun (args : String option * OperationMetadata) ->
-
-                    _called := true
-
-                    ()
-                )
-
-                Assert.True (_called.Value)
-
-            let [<Fact>] ``Functions accepting a tuple of an optional message and OperationMetadata and returning a resource are wrapped correctly`` () =
-                
-                let _called  = ref false
-
-                bindAndCall (fun (args : String option * OperationMetadata) ->
-                    
-                    _called := true
-
-                    "Hello, World"
-                )
-
-                Assert.True (_called.Value)
-
-            let [<Fact>] ``Functions accepting a tuple of an optional message and OperationMetadata and returning an optional resource are wrapped correctly`` () =
-
-                let _called = ref false
-
-                bindAndCall (fun (args : String option * OperationMetadata) ->
-
-                    _called := true
-
-                    Some ("Hello, World")
-                )
-
-                Assert.True (_called.Value)
-
-            let [<Fact>] ``Functions accepting a tuple of an optional message and OperationMetadata and returning an OperationResult are wrapped correctly`` () =
-                
-                let _called = ref false
-
-                bindAndCall (fun (args : String option * OperationMetadata) ->
-
-                    _called := true
-
-                    OperationResult.Empty
-                )
-
-                Assert.True (_called.Value)
-
-            let [<Fact>] ``Functions accepting OperationMetadata and returning a unit are wrapped correctly`` () =
-                
-                let _called = ref false
-
-                bindAndCall (fun (_ : OperationMetadata) ->
-
-                    _called := true
-
-                    ()
-                )
-
-                Assert.True (_called.Value)
-
-            let [<Fact>] ``Functions accepting OperationMetadata and returning a resource are wrapped correctly`` () =
-                
-                let _called  = ref false
-
-                bindAndCall (fun (_ : OperationMetadata) ->
-                    
-                    _called := true
-
-                    "Hello, World"
-                )
-
-                Assert.True (_called.Value)
-
-            let [<Fact>] ``Functions accepting OperationMetadata and returning an optional resource are wrapped correctly`` () =
-
-                let _called = ref false
-
-                bindAndCall (fun (_ : OperationMetadata) ->
-
-                    _called := true
-
-                    Some ("Hello, World")
-                )
-
-                Assert.True (_called.Value)
-
-            let [<Fact>] ``Functions accepting OperationMetadata and returning an OperationResult are wrapped correctly`` () =
-                
-                let _called = ref false
-
-                bindAndCall (fun (_ : OperationMetadata) ->
-
-                    _called := true
-
-                    OperationResult.Empty
-                )
-
-                Assert.True (_called.Value)
+            let [<Fact>] ``Correct result is returned for OperationResult returning targets`` () =
+                bindAndCall (fun () -> OperationResult.StatusOnly 12345) |> should equal (OperationResult.StatusOnly 12345)
 
         [<Trait (Traits.Names.Module, ModuleName)>]
         module ``public' function`` = 
@@ -797,12 +662,3 @@ module ``Setup facts`` =
                     |> ignore
 
                 ) |> should throw typeof<SetupException>
-
-
-                
-
-            
-                
-
-                
-

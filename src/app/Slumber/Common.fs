@@ -290,6 +290,7 @@ module Common =
                 }
 
         ///Useful functions for working with metadata
+        [<AutoOpen>]
         module Metadata = 
 
             ///Union describing the result of trying to get some metadata
