@@ -42,6 +42,7 @@ module Config =
                         |> supporting (delete People.deletePerson)
                         |> supporting (put People.updatePerson)
                     )
+                |> all (public' options Common.options)
                 |> reading MediaTypes.Application.Json Json.read
                 |> writing MediaTypes.Application.Json Json.write
                 |> reading MediaTypes.Text.Xml Xml.read
