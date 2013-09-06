@@ -269,8 +269,8 @@ module ``Setup facts`` =
                 let isPublic binding = 
                     binding.IsPublic
 
-                let bindAndCall f = 
-                    
+                let bindAndCallWith message f = 
+
                     let binding = 
                         bind "VERB" f
 
@@ -297,11 +297,14 @@ module ``Setup facts`` =
                                                         };
                                             };
                                 };
-                            Message = (Some (box "Hello, World")); //NOTE This will be passed to message and optional message accepting functions only
+                            Message = message;
                         }
 
                     context
                     |> binding.Operation
+
+                let bindAndCall f = 
+                    bindAndCallWith (Some (box "Hello, World")) f
 
                 let bindAndCall' f = 
                     bindAndCall f |> ignore
@@ -382,6 +385,12 @@ module ``Setup facts`` =
 
             let [<Fact>] ``Correct result is returned for OperationResult returning targets`` () =
                 bindAndCall (fun () -> OperationResult.StatusOnly 12345) |> should equal (OperationResult.StatusOnly 12345)
+
+            let [<Fact>] ``HTTP 400 is returned if required argument is not present`` () =
+                bindAndCall (fun  (arg : Int32) -> ()) |> should equal (OperationResult.StatusOnly StatusCodes.BadRequest)
+
+            let [<Fact>] ``HTTP 400 is returned if required message is not present`` () =
+                bindAndCallWith None (fun (_ : obj) -> ()) |> should equal (OperationResult.StatusOnly StatusCodes.BadRequest)
 
         [<Trait (Traits.Names.Module, ModuleName)>]
         module ``public' function`` = 

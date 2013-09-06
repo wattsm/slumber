@@ -91,7 +91,7 @@ module Setup =
                 match context.Message with
                 | None -> 
                     if (not isOptional) then
-                        invalidOp "A message is required but is not present."
+                        raise (FormatException ("A message is required but is not present."))
                 
                     makeNone messageType
 
@@ -105,7 +105,7 @@ module Setup =
                 match (tryGetParameter name context.Metadata) with
                 | None -> 
                     if (not isOptional) then
-                        invalidOp (String.Format ("The parameter {0} is required but is not present.", name))
+                        raise (FormatException (String.Format ("The parameter {0} is required but is not present.", name)))
 
                     makeNone parameterType
 
@@ -129,7 +129,7 @@ module Setup =
 
         ///Gets the values of arugments from a given context
         let getArgumentValues context =
-            Array.Parallel.map (getArgumentValue context)
+            Array.map (getArgumentValue context)
 
         ///Union describing supported return types
         type ReturnType = 
@@ -227,13 +227,21 @@ module Setup =
                     let returnType = getReturnType method'
 
                     let op (context : OperationContext) =
+                        try 
 
-                        let argValues = getArgumentValues context argTypes
-                        let returnValue = method'.Invoke (target, argValues)
+                            let argValues = getArgumentValues context argTypes
+                            let returnValue = method'.Invoke (target, argValues)
 
-                        getOperationResult 
-                        <| returnValue 
-                        <| returnType
+                            getOperationResult 
+                            <| returnValue 
+                            <| returnType
+
+                        with
+                        | :? FormatException as e ->
+
+                            logException e "Request was not valid"
+
+                            OperationResult.StatusOnly StatusCodes.BadRequest
 
                     {
                         Binding.Empty 
