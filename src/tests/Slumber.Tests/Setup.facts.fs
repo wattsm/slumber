@@ -269,7 +269,7 @@ module ``Setup facts`` =
                 let isPublic binding = 
                     binding.IsPublic
 
-                let bindAndCallWith message f = 
+                let bindModifyAndCall modifier f =
 
                     let binding = 
                         bind "VERB" f
@@ -297,11 +297,22 @@ module ``Setup facts`` =
                                                         };
                                             };
                                 };
-                            Message = message;
+                            Message = None;
                         }
 
                     context
+                    |> modifier
                     |> binding.Operation
+
+                let bindAndCallWith message = 
+                    bindModifyAndCall (fun context ->
+                        {
+                            context 
+                            with
+                                Message = message;
+                        }
+                    )
+                    
 
                 let bindAndCall f = 
                     bindAndCallWith (Some (box "Hello, World")) f
@@ -323,6 +334,61 @@ module ``Setup facts`` =
 
             let [<Fact>] ``Bindings are private by default`` () =
                 bind "VERB" (fun () -> ()) |> isPublic |> should be False
+
+            let [<Fact>] ``Argument value retrieved correctly from URL segment`` () =
+                
+                let _value = ref ""
+
+                let op (arg : String) =
+                    
+                    _value := arg
+
+                    ()
+
+                let modifier context = 
+                    {
+                        context
+                        with
+                            Metadata = 
+                                {
+                                    context.Metadata
+                                    with
+                                        Parameters = [ ("arg", "value"); ];
+                                }
+                    }
+
+                bindModifyAndCall modifier op
+                |> ignore
+
+                Assert.Equal<String> ("value", _value.Value)
+
+            let [<Fact>] ``Argument value retrieved correctly from query string`` () =
+
+                let _value = ref ""
+
+                let op (arg : String) =
+                    
+                    _value := arg
+
+                    ()
+
+                let modifier context = 
+                    
+                    let url = 
+                        {
+                            context.Metadata.Request.Url
+                            with
+                                Query = [ ("arg", "value"); ];
+                        }
+
+                    let request = { context.Metadata.Request with Url = url; }
+
+                    { context with Metadata = { context.Metadata with Request = request; }; }
+
+                bindModifyAndCall modifier op
+                |> ignore
+
+                Assert.Equal<String> ("value", _value.Value)
 
             let [<Fact>] ``Operation calls no op targets`` () =
                 

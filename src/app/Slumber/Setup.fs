@@ -102,7 +102,21 @@ module Setup =
                         message
 
             let getParameter isOptional name parameterType = 
-                match (tryGetParameter name context.Metadata) with
+
+                let value = 
+                    match (tryGetParameter name context.Metadata) with
+                    | None -> 
+                        context.Metadata.Request.Url.Query
+                        |> List.tryPick (fun (key, value) ->
+                                if (String.same key name) then
+                                    Some value
+                                else
+                                    None
+                            )
+
+                    | Some value -> Some value
+
+                match value with
                 | None -> 
                     if (not isOptional) then
                         raise (FormatException (String.Format ("The parameter {0} is required but is not present.", name)))
