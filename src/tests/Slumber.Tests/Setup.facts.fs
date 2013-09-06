@@ -7,7 +7,7 @@ open Slumber
 
 module ``Setup facts`` =
     
-    open Configuration
+    open Framework
     open Setup
     open Http
 
@@ -87,14 +87,18 @@ module ``Setup facts`` =
                             {
                                 OperationMetadata.Empty
                                 with
-                                    Url = 
-                                        {
-                                            Raw = baseUrl;
-                                            Path = "/";
-                                            Query = [];
-                                            BaseUrl = baseUrl;
+                                    Request = 
+                                        { 
+                                            Request.Empty 
+                                            with
+                                                Url = 
+                                                    {
+                                                        Raw = baseUrl;
+                                                        Path = "/";
+                                                        Query = [];
+                                                        BaseUrl = baseUrl;
+                                                    };
                                         };
-                                    Parameters = [];
                             };
                         Message = (Some (box "Hello, World")); //NOTE This will be passed to message and optional message accepting functions only
                     }
@@ -529,7 +533,7 @@ module ``Setup facts`` =
 
     module ``Endpoints facts`` = 
 
-        open Configuration.Endpoints
+        open Framework.Core.Endpoints
 
         let [<Literal>] ModuleName = "Setup.Endpoints"
 
@@ -542,6 +546,15 @@ module ``Setup facts`` =
 
             let [<Fact>] ``Created endpoint has empty binding collection`` () =
                 endpointAt "http://localhost:8080/" |> getBindings |> List.isEmpty |> should be True
+
+            let [<Fact>] ``Created endpoint is assigned a non-empty name`` () =
+                endpointAt "http://localhost:8080" |> getName |> String.IsNullOrWhiteSpace |> should be False
+
+        [<Trait (Traits.Names.Module, ModuleName)>]
+        module ``named function`` = 
+
+            let [<Fact>] ``Sets correct endpoint name`` () = 
+                Endpoint.Empty |> named "Test" |> getName |> should equal "Test"
 
         [<Trait (Traits.Names.Module, ModuleName)>]
         module ``supporting function`` = 
@@ -581,7 +594,7 @@ module ``Setup facts`` =
 
     module ``Containers facts`` = 
 
-        open Configuration.Containers
+        open Framework.Core.Containers
 
         let [<Literal>] ModuleName = "Setup.Containers"
 

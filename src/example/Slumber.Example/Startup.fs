@@ -32,18 +32,20 @@ module Startup =
         }
     
     let getCatalog (meta : OperationMetadata) = 
-        {
-            Self = meta.Url.BaseUrl.AbsoluteUri;
-            Services = 
-                [
-                    {
-                        Name = "get-catalog";
-                        Url = meta.Url.BaseUrl.AbsoluteUri;
-                    };
-                    {
-                        Name = "get-people";
-                        Url = string (createAbsoluteUri meta.Url.BaseUrl "people");
-                    };
-                ];
-        }
+        let baseUrl = meta.Request.Url.BaseUrl
+        in
+            {
+                Self = baseUrl.AbsoluteUri;
+                Services = 
+                    [
+                        {
+                            Name = "get-catalog";
+                            Url = baseUrl.AbsoluteUri;
+                        };
+                        {
+                            Name = "get-people";
+                            Url = string (createAbsoluteUri baseUrl "people");
+                        };
+                    ];
+            }
 

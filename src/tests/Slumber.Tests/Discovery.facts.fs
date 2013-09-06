@@ -11,7 +11,7 @@ module ``Discovery facts`` =
 
     open Discovery
     open Http
-    open Configuration
+    open Framework
     open Setup.Bindings
 
     let teapot (_ : string option) = 
@@ -19,6 +19,7 @@ module ``Discovery facts`` =
 
     let endpoint = 
         {
+            Name = "Dummy";
             Template = "/people/{personCode}";
             Bindings = [ get teapot ]; 
         }
@@ -82,7 +83,7 @@ module ``Discovery facts`` =
                     }
             }
 
-        let addHeader name value args = 
+        let addHeader name value (args : DiscoveryArgs) = 
 
             let payload'  = 
                 { args.Request.Payload with Headers = (name, value) :: args.Request.Payload.Headers; }
@@ -165,7 +166,7 @@ module ``Discovery facts`` =
 
                 let getTemplate outcome = 
                     match outcome with
-                    | Success info -> info.Endpoint.Template
+                    | Success (endpoint, _) -> endpoint.Template
                     | _ -> String.Empty
 
                 "/people/12345"
@@ -178,7 +179,7 @@ module ``Discovery facts`` =
                 
                 let getParameters outcome = 
                     match outcome with
-                    | Success (info : EndpointInfo) -> info.Parameters
+                    | Success (_, parameters) -> parameters
                     | _ -> []
 
                 "/people/12345"
@@ -205,12 +206,9 @@ module ``Discovery facts`` =
                     | _ -> false
 
                 let endpoint' = 
-                    {
-                        Endpoint = { endpoint with Bindings = [ post teapot ] };
-                        Parameters = [];
-                    }
+                    { endpoint with Bindings = [ post teapot ] }
 
-                endpoint'
+                (endpoint', [])
                 |> matchBinding
                 |> isNotSupported
                 |> should be True
@@ -221,14 +219,8 @@ module ``Discovery facts`` =
                     match outcome with
                     | Success _ -> true
                     | _ -> false
-
-                let endpoint' = 
-                    {
-                        Endpoint = endpoint;
-                        Parameters = [];
-                    }
-
-                endpoint'
+                
+                (endpoint, [])
                 |> matchBinding
                 |> isSuccess
                 |> should be True
@@ -237,19 +229,16 @@ module ``Discovery facts`` =
                 
                 let getParameters outcome = 
                     match outcome with
-                    | Success (info : BindingInfo) -> info.Parameters
+                    | Success (result : MatchingResult) -> result.Parameters
                     | _ -> []
 
-                let endpoint' =
-                    {
-                        Endpoint = endpoint;
-                        Parameters = [ ("PERSONCODE", "12345") ];
-                    }
+                let parameters = 
+                    [ ("PERSONCODE", "12345"); ]
 
-                endpoint'
+                (endpoint, parameters)
                 |> matchBinding
                 |> getParameters
-                |> List.same [ ("PERSONCODE", "12345") ]
+                |> List.same parameters
                 |> should be True
 
             let [<Fact>] ``Success includes operation`` () =
@@ -266,29 +255,27 @@ module ``Discovery facts`` =
                                 {
                                     OperationMetadata.Empty
                                     with
-                                        Url = 
+                                        Request = 
                                             {
-                                                Raw = Uri (baseUrl, "people/12345");
-                                                Path = "/people/12345";
-                                                Query = [];
-                                                BaseUrl = baseUrl;
+                                                Request.Empty
+                                                with
+                                                    Url = 
+                                                        {
+                                                            Raw = Uri (baseUrl, "people/12345");
+                                                            Path = "/people/12345";
+                                                            Query = [];
+                                                            BaseUrl = baseUrl;
+                                                        };                                                    
                                             };
-                                        Parameters = [];
                                 };
                             Message = None;
                         }
 
                     match outcome with
-                    | Success (info : BindingInfo) -> Some (info.Binding.Operation context)
+                    | Success result -> Some (result.Binding.Operation context)
                     | _ -> None
 
-                let endpoint' = 
-                    {
-                        Endpoint = endpoint;
-                        Parameters = [];
-                    }
-                
-                endpoint'
+                (endpoint, [])
                 |> matchBinding
                 |> executeOp
                 |> should be (Some' ({ StatusCode = Some 418; Resource = None; Headers = []; }))
@@ -297,25 +284,31 @@ module ``Discovery facts`` =
 
                 let isStringMessage result = 
                     match result with
-                    | Success (info : BindingInfo) -> info.Binding.MessageType = (Some typedefof<String>)
+                    | Success result -> result.Binding.MessageType = (Some typedefof<String>)
                     | _ -> false
 
-                let endpoint' = 
-                    {
-                        Endpoint = endpoint;
-                        Parameters = [];
-                    }
-
-                endpoint'
+                (endpoint, [])
                 |> matchBinding
                 |> isStringMessage
                 |> should be True
 
-        [<Trait (Traits.Names.Module, ModuleName)>]
-        module ``asyncGetBinding function`` =
+            let [<Fact>] ``Success includes endpoint name`` () =
 
-            let getBinding = 
-                asyncGetBinding
+                let hasCorrectName result = 
+                    match result with
+                    | Success (result : MatchingResult) -> result.EndpointName = endpoint.Name
+                    | _ -> false
+
+                (endpoint, [])
+                |> matchBinding
+                |> hasCorrectName
+                |> should be True                
+
+        [<Trait (Traits.Names.Module, ModuleName)>]
+        module ``asyncGetMatchingResult function`` =
+
+            let getMatchingResult = 
+                asyncGetMatchingResult
                 >> Async.RunSynchronously
 
             let [<Fact>] ``No registered URL returns HTTP 404`` () =
@@ -327,7 +320,7 @@ module ``Discovery facts`` =
 
                 "/addresses"
                 |> getArgs
-                |> getBinding
+                |> getMatchingResult
                 |> isNotFound
                 |> should be True
 
@@ -338,13 +331,13 @@ module ``Discovery facts`` =
                     | Failure statusCode -> statusCode = 405
                     | _ -> false
 
-                let changeVerb args = 
+                let changeVerb (args : DiscoveryArgs) = 
                     { args with Request = { args.Request with Verb = "POST"; }; }
 
                 "/people/12345"
                 |> getArgs
                 |> changeVerb
-                |> getBinding
+                |> getMatchingResult
                 |> isNotSupported
                 |> should be True
 
@@ -357,7 +350,7 @@ module ``Discovery facts`` =
 
                 "/people/12345"
                 |> getArgs
-                |> getBinding
+                |> getMatchingResult
                 |> isSuccess
                 |> should be True
 
@@ -385,11 +378,10 @@ module ``Discovery facts`` =
                     | _ -> false
 
                 let publicBinding = 
-                    { Binding = { Binding.Empty with IsPublic = true; }; Parameters = []; }
+                    { Binding = { Binding.Empty with IsPublic = true; }; Parameters = []; EndpointName = String.Empty; }
 
                 let privateBinding = 
-                    { Binding = { Binding.Empty with IsPublic = false; }; Parameters = []; }
-
+                    { Binding = { Binding.Empty with IsPublic = false; }; Parameters = []; EndpointName = String.Empty }
 
                 let isUnauthorised result = 
                     match result with

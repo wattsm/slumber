@@ -52,7 +52,6 @@
     <Compile Include="Framework.fs" />
     <Compile Include="Render.fs" />
     <Compile Include="Execution.fs" />
-    <Compile Include="Configuration.fs" />
     <Compile Include="Discovery.fs" />
     <Compile Include="Bootstrap.fs" />
     <Compile Include="Pipeline.fs" />

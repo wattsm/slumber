@@ -83,19 +83,28 @@ module ``Execution facts`` =
                 }
 
             {
-                Request = (getRequest body);
-                Reader = reader;
-                Writer = Some writer;
-                Parameters = [];
-                Operation = fun _ -> OperationResult.Both (200, "Hello, World", [ ("key", "value"); ])
-                User = None;
+                ExecutionArgs.Empty
+                with
+                    Request = (getRequest body);
+                    Reader = reader;
+                    Writer = Some writer;
+                    Target =
+                        {
+                            TargetInfo.Empty
+                            with
+                                Operation = fun _ -> OperationResult.Both (200, "Hello, World", [ ("key", "value"); ])
+                        };
             }
 
         let getArgs' () = 
             getArgs (true, true)
 
-        let setOperation op args = 
-            { args with Operation = op; }
+        let setOperation op (args : ExecutionArgs) = 
+
+            let target = 
+                { args.Target with Operation = op; }
+
+            { args with Target = target; }
 
         let setWriter writer (args : ExecutionArgs) = 
             { args with Writer = writer; }
@@ -186,10 +195,10 @@ module ``Execution facts`` =
             
             let isCorrect result = 
                 match result with
-                | Success context -> context.Metadata.RequestId = requestId
+                | Success context -> context.Metadata.Request.Id = requestId
                 | _ -> false
 
-            let setRequestId args = 
+            let setRequestId (args : ExecutionArgs) = 
                 { args with Request = { args.Request with Id = requestId; } } 
 
             getArgs' ()
@@ -247,14 +256,18 @@ module ``Execution facts`` =
                     {
                         OperationMetadata.Empty
                         with
-                            Url = 
+                            Request = 
                                 {
-                                    Raw = Uri (baseUrl, "people/12345");
-                                    Path = "/people/12345";
-                                    Query = [];
-                                    BaseUrl = baseUrl;
+                                    Request.Empty
+                                    with
+                                        Url = 
+                                            {
+                                                Raw = Uri (baseUrl, "people/12345");
+                                                Path = "/people/12345";
+                                                Query = [];
+                                                BaseUrl = baseUrl;
+                                            };
                                 };
-                            Parameters = [];
                     };
                 Message = None;
             }

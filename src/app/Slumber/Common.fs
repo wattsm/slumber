@@ -273,8 +273,8 @@ module Common =
 
         ///Represents metadata about an operation request
         type OperationMetadata = {
-            RequestId : Guid;
-            Url : Urls;
+            EndpointName : String;
+            Request : Request;
             Parameters : (String * String) list;
             User : UserData option;
         }
@@ -283,8 +283,8 @@ module Common =
             ///Empty operation metadata
             static member Empty = 
                 {
-                    RequestId = Guid.Empty;
-                    Url = Urls.Empty;
+                    EndpointName = String.Empty;
+                    Request = Request.Empty;
                     Parameters = [];
                     User = None;
                 }

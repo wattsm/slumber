@@ -3,8 +3,8 @@
 open System
 open Slumber.Common.Http
 open Slumber.Common.Attempt
-open Slumber.Configuration
 open Slumber.Execution
+open Slumber.Framework
 open Slumber.Framework.Helpers
 
 ///Contains functions and types for identifying the binding, content types and user of a request
@@ -16,23 +16,27 @@ module Discovery =
         Container : Container;
     }
 
+    ///Represents the result of matching an HTTP request against a binding
+    type MatchingResult = {
+        Binding : Binding;
+        EndpointName : String;
+        Parameters : (String * String) list;
+    }
+    with
+
+        ///The empty matching result
+        static member Empty = 
+            {
+                Binding = Binding.Empty;
+                EndpointName = String.Empty;
+                Parameters = [];
+            }
+
     ///Contains functions for matching a request URI and verb to an operation
     module Matching = 
         
         open Slumber.Common.AsyncAttempt
-        open Slumber.Configuration.Endpoints
-
-        ///Represents basic information about a matched endpoint
-        type EndpointInfo = {
-            Endpoint : Endpoint;
-            Parameters : (String * String) list;
-        }
-
-        ///Represents basic information about a matched binding
-        type BindingInfo = {
-            Binding : Binding;
-            Parameters : (String * String) list;
-        }     
+        open Slumber.Framework.Core.Endpoints
 
         ///Attempts to match a request URI to the given endpoint and returns the matching URI variables
         let private getTemplateVariables args (endpoint : Endpoint) = 
@@ -58,21 +62,14 @@ module Discovery =
                         args.Container.Endpoints
                         |> List.tryPick (fun endpoint ->
                                 match (getTemplateVariables args endpoint) with
-                                | Some parameters -> 
-                                    {
-                                        Endpoint = endpoint;
-                                        Parameters = parameters;
-                                    }
-                                    |> Some
-
-                                | _ -> 
-                                    None
+                                | Some parameters -> Some (endpoint, parameters)
+                                | _ -> None
                             )    
                         |> successOr StatusCodes.NotFound  
                 }
 
         ///Find the binding for the request verb
-        let asyncMatchBinding (info : EndpointInfo) = 
+        let asyncMatchBinding (endpoint, parameters) = 
             fun args -> 
                 async {
 
@@ -80,41 +77,45 @@ module Discovery =
 
                     let createBindingInfo binding = 
                         match binding with
-                        | Some binding' -> 
-                            Some {
-                                Binding = binding';
-                                Parameters = info.Parameters;
+                        | Some binding' ->                             
+                            {
+                                MatchingResult.Empty 
+                                with
+                                    Binding = binding';
+                                    EndpointName = endpoint.Name;
+                                    Parameters = parameters;
                             }
+                            |> Some
                         | _ -> None
 
                     return
-                        info.Endpoint
+                        endpoint
                         |> tryGetBinding args.Request.Verb
                         |> createBindingInfo
                         |> successOr StatusCodes.MethodNotAllowed
                 }
 
-        ///Asynchronously gets the binding matching the args, or an error flag
-        let asyncGetBinding =             
+        ///Asynchronously gets the result of matching the current request to an endpoint
+        let asyncGetMatchingResult =             
             asyncAttempt {
 
-                let! endpoint = asyncMatchEndpoint ()
-                let! binding = asyncMatchBinding endpoint
+                let! endpoint, parameters = asyncMatchEndpoint ()
+                let! result = asyncMatchBinding (endpoint, parameters)
 
-                return binding
+                return result
             }
 
     ///Contains functions for applying securtiy to requests
     module Security = 
 
         ///Attempts to authenticate the current user, if applicable for the selected binding
-        let asyncAuthenticateRequest (binding : Matching.BindingInfo) (args : DiscoveryArgs) =
+        let asyncAuthenticateRequest (result : MatchingResult) (args : DiscoveryArgs) =
             async {
                 
                 logInfo "[%A] Authenticating request" args.Request.Id
 
                 return
-                    if binding.Binding.IsPublic then
+                    if result.Binding.IsPublic then
 
                         logInfo "[%A] Binding is public" args.Request.Id
 
@@ -144,7 +145,7 @@ module Discovery =
     module Negotiation = 
 
         open Slumber.Common.Http.Requests
-        open Slumber.Configuration.Containers
+        open Slumber.Framework.Core.Containers
 
         ///The default content type to be used if the Content-Type of Accept headers are omitted
         let [<Literal>] DefaultMediaType = MediaTypes.Text.Xml
@@ -244,13 +245,13 @@ module Discovery =
                 }
                 |> Some
 
-        let onAuthenticationSuccess (info : Matching.BindingInfo) userData = 
+        let onAuthenticationSuccess (result : MatchingResult) userData = 
             async {
 
                 let! reader = Negotiation.asyncGetReader args
                 let! writer = Negotiation.asyncGetWriter args
 
-                match (info.Binding.MessageType, reader) with
+                match (result.Binding.MessageType, reader) with
                 | (_, None) -> 
                     return stopWithStatus StatusCodes.ContentTypeNotSupported
                 | (messageType, Some reader') ->                   
@@ -259,32 +260,36 @@ module Discovery =
                             Request = args.Request;
                             Reader = (getReaderInfo reader' messageType);
                             Writer = (getWriterInfo writer);
-                            Parameters = info.Parameters;
-                            Operation = info.Binding.Operation;
+                            Target = 
+                                {
+                                    EndpointName = result.EndpointName;
+                                    Operation = result.Binding.Operation;
+                                    Parameters = result.Parameters;
+                                }
                             User = userData;
                         }
                         |> continue'
             }
             
-        let onBindingSuccess (info : Matching.BindingInfo) args =
+        let onMatchingSuccess (result : MatchingResult) args =
             async {
 
-                let! authResult = Security.asyncAuthenticateRequest info args
+                let! authResult = Security.asyncAuthenticateRequest result args
 
                 match authResult with
                 | Failure statusCode -> return stopWithStatus statusCode
-                | Success userData -> return! onAuthenticationSuccess info userData
+                | Success userData -> return! onAuthenticationSuccess result userData
             }
 
         async {
 
             logInfo "[%A] Beginning discovery phase for %A %A" args.Request.Id args.Request.Verb args.Request.Url.Path
             
-            let! bindingResult = Matching.asyncGetBinding args            
+            let! matchingResult = Matching.asyncGetMatchingResult args            
 
-            match bindingResult with
+            match matchingResult with
             | Failure statusCode -> return stopWithStatus statusCode
-            | Success info -> return! onBindingSuccess info args
+            | Success info -> return! onMatchingSuccess info args
         }
         
     ///Runs the discovery phase synchronously

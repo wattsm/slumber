@@ -2,7 +2,7 @@
 
 open System
 open Slumber
-open Slumber.Configuration
+open Slumber.Framework
 open Slumber.Common.Http
 open Slumber.Common.Http.Headers
 open Slumber.Setup

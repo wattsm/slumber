@@ -2,7 +2,7 @@
 
 open System
 open System.Web
-open Slumber.Configuration
+open Slumber.Framework
 
 ///Default implementation of an HTTP handler for Slumber
 type SlumberHandler () =

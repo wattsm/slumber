@@ -2,7 +2,7 @@
 
 open System
 open Slumber.Common.Http
-open Slumber.Configuration
+open Slumber.Framework
 
 ///Contains functions for generating Slumber configuration in a fluent style
 module Setup = 
@@ -788,15 +788,20 @@ module Setup =
     [<AutoOpen>]
     module Endpoints = 
 
-        open Slumber.Configuration.Endpoints
+        open Slumber.Framework.Core.Endpoints
 
         ///Creates an endpoint for the given URI template
         let endpointAt template = 
             {
                 Endpoint.Empty
                 with
+                    Name = string (Guid.NewGuid ());
                     Template = template;
             }
+
+        ///Assigns a name to an endpoint
+        let named name endpoint = 
+            { endpoint with Name = name; }
 
         ///Adds a binding to an endpoint
         let supporting (binding : Binding) endpoint =
@@ -814,7 +819,7 @@ module Setup =
     module Containers = 
 
         open System.Web
-        open Slumber.Configuration.Containers
+        open Slumber.Framework.Core.Containers
 
         ///Creates an absolute URI
         let absoluteUri (uri : String) = 

@@ -67,7 +67,7 @@ module People =
         getParameterAs<Int32> "id"
 
     let private getUrl (relativeUrl : String) (meta : OperationMetadata) = 
-        Uri (meta.Url.BaseUrl, relativeUrl)
+        Uri (meta.Request.Url.BaseUrl, relativeUrl)
         |> string
 
     let getPeople (meta : OperationMetadata) =

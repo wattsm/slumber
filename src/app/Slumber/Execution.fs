@@ -27,15 +27,41 @@ module Execution =
         ContentType : String;
     }
 
+    ///Represents the selected operation and associated information
+    type TargetInfo = {
+        EndpointName : String;
+        Operation : Operation;
+        Parameters : (String * String) list;
+    }
+    with
+
+        ///Empty target information
+        static member Empty = 
+            {
+                EndpointName = String.Empty;
+                Operation = (fun _ -> OperationResult.Empty);
+                Parameters = [];
+            }
+
     ///Represents the arguments used to run the execution phase
     type ExecutionArgs = {
         Request : Http.Request;
         Reader : ReaderInfo option;
         Writer : WriterInfo option;
-        Parameters : (String * String) list;
-        Operation : Operation;
+        Target : TargetInfo;
         User : UserData option;
     }
+    with
+
+        ///Empty execution args
+        static member Empty = 
+            {
+                Request = Http.Request.Empty;
+                Reader = None;
+                Writer = None;
+                Target = TargetInfo.Empty;
+                User = None;
+            }
 
     ///Reads a message from the input stream
     let asyncGetMessage () =
@@ -82,9 +108,9 @@ module Execution =
                 {
                     Metadata = 
                         {
-                            RequestId = args.Request.Id;
-                            Url = args.Request.Url;
-                            Parameters = args.Parameters;
+                            EndpointName = args.Target.EndpointName;
+                            Request = args.Request;
+                            Parameters = args.Target.Parameters;
                             User = args.User;
                         };
                     Message = message;
@@ -101,7 +127,7 @@ module Execution =
                 logInfo "[%A] Invoking operation" args.Request.Id
 
                 try 
-                    return (Success (args.Operation context))
+                    return (Success (args.Target.Operation context))
                 with
                 | e ->
 

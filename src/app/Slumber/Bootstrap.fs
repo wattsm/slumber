@@ -6,7 +6,6 @@ open System.Reflection
 open System.IO
 open HandyFS.Types
 open Slumber.Common.Http
-open Slumber.Configuration
 open Slumber.Discovery
 open Slumber.Framework
 open System.Collections.Generic
