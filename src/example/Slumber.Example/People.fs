@@ -63,17 +63,23 @@ module People =
     let private data = 
         Dictionary<int, PersonSummary> ()
 
-    let private getId = 
-        getParameterAs<Int32> "id"
-
     let private getUrl (relativeUrl : String) (meta : OperationMetadata) = 
         Uri (meta.Request.Url.BaseUrl, relativeUrl)
         |> string
 
-    let getPeople (meta : OperationMetadata) =
+    let getPeople (search : String option) (meta : OperationMetadata) =
+
+        let people = 
+            data.Values
+            |> Seq.filter (fun person ->
+                    match search with
+                    | Some term -> person.FullName.Contains (term)
+                    | _ -> true
+                )
+
         {
             Self = (getUrl "people" meta);
-            People = data.Values;
+            People = people;
         }
 
     let getPerson (id : Int32) = 
