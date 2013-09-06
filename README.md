@@ -103,41 +103,44 @@ let addWidget (widget : Widget) =
     OperationResult.StatusOnly 201 
 ```
 
-Similarly if you want access to URL segments, query string parameters etc. you can access them via OperationMetadata.
+You can access URL segments, query string parameters etc. by adding an argument to your function with the same name, e.g.
 
 ```fsharp
-let getWidgetCatalog (meta : OperationMetadata) = 
+
+/// GET /widget-catalog?search=term
+
+let getWidgetCatalog (search : String option) =   
   
-  let search = getParameter "search" meta
   let widgets = storage.GetWidgets (search)
   
   { Widgets = widgets; }  
 ```
 
-#### Operation types
+Slumber will get value type and string arugments from URL segments or the query string. If the argument type is not ``Option<T>`` and a corresponding value
+cannot be found then Slumber will return an HTTP 400 response.
 
-Slumber supports various function signatures for operations, but all have the basic structure ``'Input -> 'Output``.
+Functions may also accept a single argument representing the request body. The argument type must be a reference type. Again, if the argument is not ``Option<T>`` then if the request has no body
+Slumber will return an ``HTTP 400`` response.
 
-For inputs the following are supported:
+Below are some examples.
 
-* Unit
-* 'TMessage
-* 'TMessage option
-* ('TMessage * OperationMetadata)
-* ('TMessage option * OperationMetadata)
-* OperationMetadata
-* OperationContext
+```fsharp
 
-Where 'TMessage is a serialisable message type, e.g. ``Widget`` in the example above.
+/// GET /widget-catalog
+let getWidgets () = ...
 
-For outputs the following are supported:
+/// POST /widget-catalog
+let addWidget (widget : WidgetMessage) = ...
 
-* Unit
-* 'TResource
-* 'TResource option
-* OperationResult
+/// PUT /widget-cataog/{id}
+let updateWidget (id : Int32) (widget : WidgetMessage) = ...
 
-Where 'TResource is a serialisable resource type, e.g. ``WidgetCatalog`` in the example above.
+/// DELETE /widget-catalog/{id}
+let deleteWidget (id : Int32) = ...
+
+/// GET /widget-search?search=term[&orderBy=something]
+let searchWidgets (search : String) (orderBy : String option) = ...
+```
 
 #### Status codes
 
@@ -148,7 +151,7 @@ Status codes used by Slumber:
 * ``405 Method Not Allowed`` - when the endpoint does not support the HTTP verb used.
 * ``415 Unsupported Media Type`` - when the Content-Type header contains an unsupported media type.
 * ``406 Not Acceptable`` - when the Accept header contains an unsupported media type **OR** an error occurs during resource serialisation.
-* ``400 Bad Request`` - when an error occurs during message deserialisation **OR** the operation expects a message but none was supplied.
+* ``400 Bad Request`` - when an error occurs during message deserialisation **OR** the operation expects a message or parameter but none was supplied.
 * ``500 Internal Server Error`` - when an unhandled exception occurs during execution of an operation.
 
 #### Future plans
