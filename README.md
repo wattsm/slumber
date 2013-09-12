@@ -76,10 +76,12 @@ let authenticate (request : Request) =
   match (request.Payload.Headers |> Headers.getValue "Authorization") with
   | Some username -> Allow (Some { Id = username; Properties = []; })
   | _ -> Deny
+  
+...
 
 ///Slumber configuration
 containerAt (relativeUri baseUrl "/")
-|> authenticatedBy authenticate
+|> authenticatedBy authenticate true
 |> with' (
     endpointAt "/widget-catalog"
     |> supporting (get getWidgetCatalog)
