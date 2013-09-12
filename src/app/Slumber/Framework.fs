@@ -1,7 +1,6 @@
 ﻿namespace Slumber
 
 open System
-open Slumber.Common.Http
 
 ///Contains functions and types used to construct and execute request pipelines
 module Framework =

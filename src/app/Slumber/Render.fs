@@ -5,8 +5,6 @@ open System.Text
 open System.Web
 open System.IO
 open System.Collections.Specialized
-open Slumber.Common.Http
-open Slumber.Common.Http.Headers
 open Slumber.Framework
 
 ///Contains functions used to render the HTTP response 
@@ -50,7 +48,7 @@ module Render =
                     | StatusCode _ -> 0
                     | Resource (_, bytes) -> List.length bytes
 
-                setHeader ContentLength (string contentLength)
+                setHeader Headers.ContentLength (string contentLength)
 
                 args.CustomHeaders
                 |> List.filter (fst >> String.same Headers.ContentType >> not) //Special header
@@ -63,7 +61,7 @@ module Render =
 
                 let customContentType = 
                     args.CustomHeaders
-                    |> pickContentType
+                    |> Headers.getContentType
 
                 match (customContentType, args.ContentType) with
                 | (Some contentType, _) -> response.ContentType <- contentType

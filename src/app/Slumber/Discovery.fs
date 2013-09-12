@@ -1,7 +1,6 @@
 ﻿namespace Slumber
 
 open System
-open Slumber.Common.Http
 open Slumber.Common.Attempt
 open Slumber.Execution
 open Slumber.Framework
@@ -163,7 +162,6 @@ module Discovery =
     ///Contains functions for negotiating content types based on the Content-Type and Accept header
     module Negotiation = 
 
-        open Slumber.Common.Http.Requests
         open Slumber.Framework.Core.Containers
 
         ///The default content type to be used if the Content-Type of Accept headers are omitted
@@ -179,7 +177,7 @@ module Discovery =
                 logInfo "[%A] Negotiating request content type" args.Request.Id
 
                 let requestedContentType = 
-                    match (Headers.getContentType args.Request.Payload) with
+                    match (Headers.getContentType args.Request.Payload.Headers) with
                     | Some contentType -> contentType
                     | _ -> DefaultMediaType
 
@@ -210,7 +208,7 @@ module Discovery =
                 logInfo "[%A] Negotiating response content type" args.Request.Id
 
                 let requestedContentType = 
-                    match (Headers.getAccept args.Request.Payload) with
+                    match (Headers.getAccept args.Request.Payload.Headers) with
                     | Some contentType when (contentType <> AnyContentType) -> contentType
                     | _ -> DefaultMediaType
 

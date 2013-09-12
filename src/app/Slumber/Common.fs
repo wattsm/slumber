@@ -22,6 +22,7 @@ module Common =
         | _ -> Failure error   
 
     ///Contains modules for working with HTTP
+    [<AutoOpen>]
     module Http = 
 
         open System.IO
@@ -29,6 +30,7 @@ module Common =
         open System.Collections.Specialized
 
         ///Contains constants for HTTP status codes
+        [<RequireQualifiedAccess>]
         module StatusCodes = 
         
             let [<Literal>] Ok = 200
@@ -121,15 +123,6 @@ module Common =
                     Payload = Payload.Empty;
                 }
 
-        ///Contains functions for working with requests
-        module Requests = 
-
-            ///True if a request contains a body
-            let hasBody request = 
-                match request.Payload.Body with
-                | None -> false
-                | _ -> true
-
         ///Describes possible response types
         type ResponseType =
             | StatusCode of Int32
@@ -214,17 +207,16 @@ module Common =
 
             Uri (baseUrl', relativeUrl')
 
-        ///Contains functions for working with HTTP headers
+        ///Contains functions for working with HTTP headers                
+        [<RequireQualifiedAccess>]
         module Headers = 
 
             let [<Literal>] ContentType = "Content-Type"
             let [<Literal>] Accept = "Accept"
             let [<Literal>] ContentLength = "Content-Length"
 
-            //TODO Consider changing naming convention to getX and getPayloadX
-
             ///Picks the value of a header with a given key from a key/value list
-            let pickHeaderValue key = 
+            let getValue key = 
                 List.tryPick (fun (key', value) ->
                     if (String.same key key') then
                         Some value
@@ -232,37 +224,19 @@ module Common =
                         None
                 )
 
-            ///Gets the value of a header from an HTTP payload
-            let getHeaderValue key (payload : Payload) = 
-                payload.Headers
-                |> pickHeaderValue key
-
             ///Picks a non-empty header value from a key/value list
-            let pickNonEmptyHeaderValue key headers = 
-                match (pickHeaderValue key headers) with
+            let getNonEmptyValue key headers = 
+                match (getValue key headers) with
                 | Some value when not (String.IsNullOrWhiteSpace value) -> Some value
                 | _ -> None
 
-            ///Gets a header value, counting empty values as not being present
-            let getNonEmptyHeaderValue key payload = 
-                payload.Headers
-                |> pickNonEmptyHeaderValue key
-
             ///Gets the value of the Content-Type header from a key/value list
-            let pickContentType =
-                pickNonEmptyHeaderValue ContentType
-
-            ///Gets the value of the Content-Type header
-            let getContentType = 
-                getNonEmptyHeaderValue ContentType
+            let getContentType =
+                getNonEmptyValue ContentType
 
             ///Gets the value of the Accept header from a key/value list
-            let pickAccept = 
-                getNonEmptyHeaderValue Accept
-
-            ///Gets the value of the Accept header
-            let getAccept =
-                getNonEmptyHeaderValue Accept
+            let getAccept = 
+                getNonEmptyValue Accept
 
     ///Record describing basic user properties
     type UserData = {

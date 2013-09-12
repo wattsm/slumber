@@ -2,7 +2,6 @@
 
 open System
 open HandyFS.Option
-open Slumber.Common.Http
 open Slumber.Common.AsyncAttempt
 open Slumber.Framework
 open Slumber.Framework.Helpers

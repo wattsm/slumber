@@ -168,47 +168,41 @@ module ``Common facts`` =
 
         module ``Headers facts`` =
 
-            open Http.Headers
-
             let [<Literal>] ModuleName = "Common.Http.Headers"
 
-            let payload = 
-                {
-                    Headers = 
-                        [
-                            ("Content-Type", MediaTypes.Text.Xml);
-                            ("Authorization", String.Empty);
-                        ];
-                    Body = None;
-                }
+            let headers =
+                [
+                    ("Content-Type", MediaTypes.Text.Xml);
+                    ("Authorization", String.Empty);
+                ]
 
             [<Trait (Traits.Names.Module, ModuleName)>]
-            module ``getHeaderValue function`` = 
+            module ``getValue function`` = 
 
                 let [<Fact>] ``Correct value is returned when header is present`` () =
-                    payload
-                    |> getHeaderValue "Content-Type"
+                    headers
+                    |> Headers.getValue "Content-Type"
                     |> should be (Some' MediaTypes.Text.Xml)
 
                 let [<Fact>] ``None is returned when header is not present`` () = 
-                    payload
-                    |> getHeaderValue "Accept"
+                    headers
+                    |> Headers.getValue "Accept"
                     |> should be None'<String>
 
             [<Trait (Traits.Names.Module, ModuleName)>]
-            module ``getNonEmptyHeaderValue function`` =
+            module ``getNonEmptyValue function`` =
 
                 let [<Fact>] ``Correct value is returned when the header is present and non-empty`` () =
-                    payload
-                    |> getNonEmptyHeaderValue "Content-Type"
+                    headers
+                    |> Headers.getNonEmptyValue "Content-Type"
                     |> should be (Some' MediaTypes.Text.Xml)
 
                 let [<Fact>] ``None is returned when the header is present and empty`` () =
-                    payload
-                    |> getNonEmptyHeaderValue "Authorization"
+                    headers
+                    |> Headers.getNonEmptyValue "Authorization"
                     |> should be None'<String>
 
                 let [<Fact>] ``None is returned when the header is not present`` () =
-                    payload
-                    |> getNonEmptyHeaderValue "Accept"
+                    headers
+                    |> Headers.getNonEmptyValue "Accept"
                     |> should be None'<String>

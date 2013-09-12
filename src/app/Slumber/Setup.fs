@@ -1,7 +1,6 @@
 ﻿namespace Slumber
 
 open System
-open Slumber.Common.Http
 open Slumber.Framework
 
 ///Contains functions for generating Slumber configuration in a fluent style

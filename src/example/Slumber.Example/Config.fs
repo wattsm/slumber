@@ -3,8 +3,6 @@
 open System
 open Slumber
 open Slumber.Framework
-open Slumber.Common.Http
-open Slumber.Common.Http.Headers
 open Slumber.Setup
 open Slumber.IO.DataContract
 
@@ -15,8 +13,8 @@ module Config =
         let authenticate (request : Request) = 
 
             let username = 
-                request.Payload
-                |> getHeaderValue "Authorization"
+                request.Payload.Headers
+                |> Headers.getValue "Authorization"
 
             match username with
             | Some username' -> Allow (Some { Id = username'; Properties = []; })
