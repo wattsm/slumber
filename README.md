@@ -65,16 +65,15 @@ let addWidget (widget : Widget) =
 These functions can be exposed as RESTful endpoints using Slumber:
 
 ```fsharp
+open System
 open Slumber
 open Slumber.Framework
 open Slumber.Setup
-open Slumber.Common.Http
-open Slumber.Common.Http.Headers
 open Slumber.IO.DataContract
 
 ///Use this to authenticate requests
 let authenticate (request : Request) = 
-  match (request.Payload |> getHeaderValue "Authorization") with
+  match (request.Payload.Headers |> Headers.getValue "Authorization") with
   | Some username -> Allow (Some { Id = username; Properties = []; })
   | _ -> Deny
 
