@@ -29,23 +29,15 @@ Imagine a simple data model:
 ```fsharp
 [<DataContract (Name = "widget", Namespace = "")>]
 type Widget = {
-
-  [<field: DataMember (Name = "code")>]
-  Code : String;
-  
-  [<field: DataMember (Name = "name")>]
-  Name : String;
-  
-  [<field: DataMember (Name = "capacity")>]
-  Capacity : Int32;
+  [<field: DataMember (Name = "code")>] Code : String;  
+  [<field: DataMember (Name = "name")>] Name : String;  
+  [<field: DataMember (Name = "capacity")>] Capacity : Int32;
 
 }
 
 [<DataContract (Name = "widget-catalog", Namespace = "")>]
 type WidgetCatalog = {
-
-  [<field: DataMember (Name = "widgets")>]
-  Widgets : Widget list;
+  [<field: DataMember (Name = "widgets")>] Widgets : Widget list;
 }
 ```
 
@@ -76,8 +68,8 @@ let authenticate (request : Request) =
   match (request.Payload.Headers |> Headers.getValue "Authorization") with
   | Some username -> Allow (Some { Id = username; Properties = []; })
   | _ -> Deny
-  
-...
+
+///... snip ...  
 
 ///Slumber configuration
 containerAt (relativeUri baseUrl "/")
