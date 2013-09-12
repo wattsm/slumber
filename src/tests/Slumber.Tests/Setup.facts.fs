@@ -266,8 +266,8 @@ module ``Setup facts`` =
                 let getMessageType binding = 
                     binding.MessageType
 
-                let isPublic binding = 
-                    binding.IsPublic
+                let getMode binding = 
+                    binding.SecurityMode
 
                 let bindModifyAndCall modifier f =
 
@@ -332,8 +332,8 @@ module ``Setup facts`` =
             let [<Fact>] ``Verb is set correctly`` () = 
                 bind "VERB" (fun () -> ()) |> getVerb |> should equal "VERB"
 
-            let [<Fact>] ``Bindings are private by default`` () =
-                bind "VERB" (fun () -> ()) |> isPublic |> should be False
+            let [<Fact>] ``Bindings inherit security by default`` () =
+                bind "VERB" (fun () -> ()) |> getMode |> Option.isNone |> should be True
 
             let [<Fact>] ``Argument value retrieved correctly from URL segment`` () =
                 
@@ -461,7 +461,7 @@ module ``Setup facts`` =
         [<Trait (Traits.Names.Module, ModuleName)>]
         module ``public' function`` = 
 
-            let [<Fact>] ``Sets public flag to true on binding`` () = 
+            let [<Fact>] ``Sets security mode to public`` () = 
 
                 let op _ = OperationResult.Empty
                 let verb f = bind "VERB" f
@@ -469,7 +469,20 @@ module ``Setup facts`` =
                 let binding = 
                     public' verb op
 
-                binding.IsPublic |> should be True
+                binding.SecurityMode |> Option.get |> should equal SecurityMode.Public
+
+        [<Trait (Traits.Names.Module, ModuleName)>]
+        module ``private' function`` = 
+
+            let [<Fact>] ``Sets security mode to private`` () = 
+
+                let op _ = OperationResult.Empty
+                let verb f = bind "VERB" f
+
+                let binding = 
+                    private' verb op
+
+                binding.SecurityMode |> Option.get |> should equal SecurityMode.Private
 
     module ``Endpoints facts`` = 
 
@@ -567,18 +580,40 @@ module ``Setup facts`` =
         [<Trait (Traits.Names.Module, ModuleName)>]
         module ``authenticatedBy function`` = 
 
-            let [<Fact>] ``Makes container private by default`` () =
+            let auth (_ : Request) = 
+                Deny
 
-                let isPrivate mode = 
-                    match mode with
-                    | Private _ -> true
-                    | _ -> false
+            let setDefault mode container = 
+                { container with Security = { container.Security with DefaultMode = mode }; }
 
-                Container.Empty
-                |> authenticatedBy (fun _ -> Deny)
-                |> getSecurityMode
-                |> isPrivate
-                |> should be True
+            let [<Fact>] ``Sets authentication function`` () =
+
+                let config =
+                    Container.Empty
+                    |> authenticatedBy auth false
+                    |> getSecurityConfig
+
+                config.Authenticate |> Option.isSome |> should be True
+
+            let [<Fact>] ``Sets default mode to private when privateByDefault is true`` () =
+                
+                let config = 
+                    Container.Empty
+                    |> setDefault Public
+                    |> authenticatedBy auth true
+                    |> getSecurityConfig
+
+                config.DefaultMode |> should equal Private
+
+            let [<Fact>] ``Sets default mode to public when privateByDefault is false`` () =
+
+                let config = 
+                    Container.Empty
+                    |> setDefault Private
+                    |> authenticatedBy auth false
+                    |> getSecurityConfig
+
+                config.DefaultMode |> should equal Public
 
         [<Trait (Traits.Names.Module, ModuleName)>]
         module ``with' function`` =

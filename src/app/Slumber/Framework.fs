@@ -20,13 +20,20 @@ module Framework =
     ///Contains core types and functions used by Slumber
     [<AutoOpen>]
     module Core = 
+
+        let [<Literal>] DefaultUrl = "http://localhost/"
+
+        ///Union describing possible security modes
+        type SecurityMode =
+            | Public
+            | Private
         
         ///Represents a verb bound operation binding
         type Binding = {
             Verb : String;
             MessageType : Type option;
             Operation : Operation;
-            IsPublic : bool;
+            SecurityMode : SecurityMode option;
         }          
         with
 
@@ -36,7 +43,7 @@ module Framework =
                     Verb = String.Empty;
                     MessageType = None;
                     Operation = (fun _ -> OperationResult.Empty);
-                    IsPublic = false;
+                    SecurityMode = None;
                 }
 
         ///Represents a URL bound endpoint exposing zero or more operations
@@ -69,24 +76,33 @@ module Framework =
                     Readers = [];
                     Writers = [];
                     ForwardedTypes = [];
-                }
+                }        
 
         ///Union describing possible results of user authentication
         type AuthenticationResult = 
             | Allow of (UserData option)
-            | Deny
+            | Deny        
 
-        ///Union describing the possible security modes of a container
-        type SecurityMode = 
-            | Public
-            | Private of (Request -> AuthenticationResult)
+        ///Represents the security configuration of a container
+        type SecurityConfig = {
+            DefaultMode : SecurityMode;
+            Authenticate : (Request -> AuthenticationResult) option;
+        }
+        with
+
+            ///Default security configuration
+            static member Default = 
+                {
+                    DefaultMode = Public;
+                    Authenticate = None;
+                }
 
         ///Represents a collection of endpoints and associated configuration data
         type Container = {
             Endpoints : Endpoint list;
             IO : IOConfig;
             BaseUrl : Uri;
-            SecurityMode : SecurityMode;
+            Security : SecurityConfig;
         }
         with
 
@@ -95,8 +111,8 @@ module Framework =
                 {
                     Endpoints = [];
                     IO = IOConfig.Empty;
-                    BaseUrl = Uri ("http://localhost/", UriKind.Absolute);
-                    SecurityMode = Public;
+                    BaseUrl = Uri (DefaultUrl, UriKind.Absolute);
+                    Security = SecurityConfig.Default;
                 }
 
         ///Union describing possible configuration modes
@@ -171,9 +187,9 @@ module Framework =
                 | None -> contentType
                 | Some contentType -> contentType
 
-            ///Gets the security mode of a container
-            let getSecurityMode container = 
-                container.SecurityMode
+            ///Gets the security config of a container
+            let getSecurityConfig container = 
+                container.Security
 
             ///Gets an endpoint from a container by name
             let tryGetEndpointByName name container = 

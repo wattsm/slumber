@@ -107,7 +107,8 @@ module ``Discovery facts`` =
             { args with Container = container'; }
       
         let makePrivate auth args = 
-            { args with Container = { args.Container with SecurityMode = (Private auth); }; }
+            let security = { args.Container.Security with DefaultMode = Private; Authenticate = (Some auth); }
+            in  { args with Container = { args.Container with Security = security; }; }
 
     module ``Matching facts`` = 
 
@@ -397,82 +398,157 @@ module ``Discovery facts`` =
                     asyncAuthenticateRequest binding args
                     |> Async.RunSynchronously
 
-                let isSuccess result = 
-                    match result with
-                    | Success _ -> true
-                    | _ -> false
+                let setAuth f args = 
+                    let security = { args.Container.Security with Authenticate = (Some f); }
+                    in { args with Container = { args.Container with Security = security; }; }
 
-                let publicBinding = 
-                    { Binding = { Binding.Empty with IsPublic = true; }; Parameters = []; EndpointName = String.Empty; }
+                let setMode mode args = 
+                    let security = { args.Container.Security with DefaultMode = mode; } 
+                    in { args with Container = { args.Container with Security = security; }; }
 
-                let privateBinding = 
-                    { Binding = { Binding.Empty with IsPublic = false; }; Parameters = []; EndpointName = String.Empty }
+                let getResult mode = 
+                    {
+                        EndpointName = "";
+                        Parameters = [];
+                        Binding = 
+                            {
+                                Verb = "VERB";
+                                SecurityMode = mode;
+                                Operation = (fun _ -> OperationResult.Empty);
+                                MessageType = None;
+                            };
+                    }
 
-                let isUnauthorised result = 
-                    match result with
-                    | Failure statusCode -> statusCode = StatusCodes.Unauthorised
-                    | _ -> false
+                let assertCalled isPublic defaultMode expected = 
 
-            let [<Fact>] ``Public binding returns success in private container`` () =
-                getArgs "/people/12345"
-                |> makePrivate (fun _ -> Deny)
-                |> authenticateRequest publicBinding
-                |> isSuccess
-                |> should be True
+                    let _called = ref false
 
-            let [<Fact>] ``Public binding returns success in public container`` () =
-                getArgs "/people/12345"
-                |> authenticateRequest publicBinding
-                |> isSuccess
-                |> should be True
+                    let result = 
+                        getResult isPublic
 
-            let [<Fact>] ``Public binding returns no user data`` () =
+                    let auth _ = 
+                        _called := true
+                        Deny
+
+                    getArgs "/12345"
+                    |> setAuth auth
+                    |> setMode defaultMode
+                    |> authenticateRequest result
+                    |> ignore
+
+                    Assert.Equal (expected, _called.Value)
+
+                let getUserData outcome = 
+                    match outcome with
+                    | Success user -> user
+                    | _ -> invalidOp "Unexpected outcome"
+
+                let getStatusCode outcome = 
+                    match outcome with
+                    | Failure statusCode -> statusCode
+                    | _ -> invalidOp "Unexpected outcome"
+
+            let [<Fact>] ``Authentication function called for private bindings`` () =
+                assertCalled
+                <| (Some SecurityMode.Private)
+                <| SecurityMode.Private
+                <| true
+
+            let [<Fact>] ``Authentication function not called for public bindings`` () =
+                assertCalled
+                <| (Some SecurityMode.Public)
+                <| SecurityMode.Private
+                <| false
+
+            let [<Fact>] ``Authenticaiton function called for inherited bindings if mode is private`` () =
+                assertCalled
+                <| None
+                <| SecurityMode.Private
+                <| true
+
+            let [<Fact>] ``Authentication function not called for inherited bindings if mode is public`` () =
+                assertCalled
+                <| None
+                <| SecurityMode.Public
+                <| false
+
+            let [<Fact>] ``Correct user data is returned when authentication is successful`` () =
                 
-                let isEmpty result = 
-                    match result with
-                    | Success None -> true
+                let result = 
+                    getResult (Some SecurityMode.Private)
+
+                let auth _ =
+                    Allow (Some { Id = "admin"; Properties = []; })
+
+                let isCorrect (data : UserData option) = 
+                    match data with 
+                    | Some user -> user.Id = "admin"
                     | _ -> false
 
-                getArgs "/people/12345"
-                |> authenticateRequest publicBinding
-                |> isEmpty
-                |> should be True
-        
-            let [<Fact>] ``Private binding returns success if authentication is successful`` () =
-                getArgs "/people/12345"
-                |> makePrivate (fun _ -> Allow (None))
-                |> authenticateRequest privateBinding
-                |> isSuccess
+                getArgs "/1235"
+                |> setAuth auth
+                |> authenticateRequest result
+                |> getUserData
+                |> isCorrect
                 |> should be True
 
-            let [<Fact>] ``Private binding returns user data if authentication is successful`` () =
+            let [<Fact>] ``Nothing is returned for private binding when no authentication function is set`` () =
+                
+                let result = getResult (Some SecurityMode.Private)
 
-                let isDataCorrect result = 
-                    match result with
-                    | Success user -> 
-                        match user with
-                        | Some (data : UserData) -> data.Id = "user.name"
-                        | _ -> false
-                    | _ -> false
-
-                getArgs "/people/12345"
-                |> makePrivate (fun _ -> Allow (Some { Id = "user.name"; Properties = []; }))
-                |> authenticateRequest privateBinding
-                |> isDataCorrect
+                getArgs "/12345"
+                |> authenticateRequest result
+                |> getUserData
+                |> Option.isNone
                 |> should be True
 
-            let [<Fact>] ``Private binding returns success if no authentication function is set`` () =
-                getArgs "/people/12345"
-                |> authenticateRequest privateBinding
-                |> isSuccess
+            let [<Fact>] ``Nothing is returned for public bindings`` () =
+                
+                let result = getResult (Some SecurityMode.Public)
+                let auth _ = Allow (Some { Id = "admin"; Properties = []; })
+
+                getArgs "/1235"
+                |> setAuth auth
+                |> authenticateRequest result
+                |> getUserData
+                |> Option.isNone
                 |> should be True
 
-            let [<Fact>] ``Private binding returns HTTP 401 if authentication fails`` () =
-                getArgs "/people/12345"
-                |> makePrivate (fun _ -> Deny)
-                |> authenticateRequest privateBinding
-                |> isUnauthorised
+            let [<Fact>] ``Nothing is returned for inherited bindings when mode is public`` () =
+                
+                let result = getResult None
+                let auth _ = Allow (Some { Id = "admin"; Properties = []; })
+
+                getArgs "/12345"
+                |> setAuth auth
+                |> setMode SecurityMode.Public
+                |> authenticateRequest result
+                |> getUserData
+                |> Option.isNone
                 |> should be True
+
+            let [<Fact>] ``Nothing is returned for inherited bindings when mode is private but no authentication function is set`` () = 
+                
+                let result = getResult None
+
+                getArgs "/12345"
+                |> setMode SecurityMode.Private
+                |> authenticateRequest result
+                |> getUserData
+                |> Option.isNone
+                |> should be True
+
+            let [<Fact>] ``HTTP 401 is returend when authentication is not successful`` () =
+                
+                let result = getResult (Some SecurityMode.Private)
+                let auth _ = Deny
+
+                getArgs "/12345"
+                |> setAuth auth
+                |> authenticateRequest result
+                |> getStatusCode
+                |> should equal StatusCodes.Unauthorised
+
 
     module ``Negotiation facts`` =
 

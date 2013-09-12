@@ -132,26 +132,34 @@ module Discovery =
                 
                 logInfo "[%A] Authenticating request" args.Request.Id
 
+                let isPublic = 
+                    match (result.Binding.SecurityMode, args.Container.Security.DefaultMode) with
+                    | (Some Public, _) -> true
+                    | (None, Public) -> true
+                    | _ -> false                    
+
                 return
-                    if result.Binding.IsPublic then
+                    if isPublic then
 
                         logInfo "[%A] Binding is public" args.Request.Id
 
                         Success (None)
                     else
-                        match args.Container.SecurityMode with
-                        | Public ->
+                        match args.Container.Security.Authenticate with
+                        | None ->
 
-                            logWarn "[%A] Binding is private but container is public" args.Request.Id
+                            logWarn "[%A] Binding is private but container defines no authentication function" args.Request.Id
 
                             Success (None)
-                        | Private auth ->
+
+                        | Some auth ->
                             match (auth args.Request) with
                             | Allow userData ->
 
                                 logInfo "[%A] Request was successfully authenticated" args.Request.Id
                             
                                 Success (userData)
+
                             | _ ->
 
                                 logInfo "[%A] Authentication failed for request" args.Request.Id

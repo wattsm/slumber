@@ -24,7 +24,7 @@ module Config =
         
             member this.Describe baseUrl =
                 containerAt (relativeUri baseUrl "/")
-                |> authenticatedBy authenticate
+                |> authenticatedBy authenticate true
                 |> with' (
                         endpointAt "/"
                         |> supporting (public' get Startup.getCatalog)

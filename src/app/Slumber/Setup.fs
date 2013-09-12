@@ -296,7 +296,11 @@ module Setup =
 
         ///Creates a public binding
         let public' binder f = 
-            { (binder f) with IsPublic = true; }
+            { (binder f) with SecurityMode = (Some Public); }
+
+        ///Creates a privte binding
+        let private' binder f = 
+            { (binder f) with SecurityMode = (Some Private); }
 
     ///Contains functions for creating endpoints
     [<AutoOpen>]
@@ -356,8 +360,27 @@ module Setup =
             }
 
         ///Sets the authentication function to be used by the container
-        let authenticatedBy f container = 
-            { container with SecurityMode = (Private f); }
+        let authenticatedBy f privateByDefault container = 
+
+            let setAuthenticate security = 
+                { security with Authenticate = (Some f); }
+
+            let setPrivacy security = 
+
+                let mode = 
+                    if privateByDefault then
+                        Private
+                    else
+                        Public
+
+                { security with DefaultMode = mode; }
+
+            let security = 
+                container.Security 
+                |> setAuthenticate 
+                |> setPrivacy
+
+            { container with Security = security; }
 
         ///Adds an endpoint to a container
         let with' endpoint container = 
