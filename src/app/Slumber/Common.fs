@@ -21,6 +21,12 @@ module Common =
         | Some data -> Success data
         | _ -> Failure error   
 
+    ///Record describing basic user properties
+    type UserData = {
+        Id : String;
+        Properties : (String * String) list;
+    }
+
     ///Contains modules for working with HTTP
     [<AutoOpen>]
     module Http = 
@@ -236,13 +242,7 @@ module Common =
 
             ///Gets the value of the Accept header from a key/value list
             let getAccept = 
-                getNonEmptyValue Accept
-
-    ///Record describing basic user properties
-    type UserData = {
-        Id : String;
-        Properties : (String * String) list;
-    }
+                getNonEmptyValue Accept    
 
     ///Contains functions for working with operations
     [<AutoOpen>]
@@ -472,17 +472,4 @@ module Common =
         //Syntactic sugar for the asycn attempt workflow
         let asyncAttempt = 
             AsyncAttemptBuilder ()
-
-    ///Contains functions and types for serialising and deserialising request and response bodies
-    module MessageIO = 
-
-        open System.IO
-
-        ///Type alias for the signature of deserialisers
-        type Reader = Stream -> Type -> obj option
-
-        ///Type alias for the signature of serialisers
-        type Writer = obj -> byte list
-
-        
-            
+    

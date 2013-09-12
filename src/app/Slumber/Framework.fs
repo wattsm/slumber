@@ -5,6 +5,18 @@ open System
 ///Contains functions and types used to construct and execute request pipelines
 module Framework =
 
+    ///Contains functions and types for serialising and deserialising request and response bodies
+    module MessageIO = 
+
+        open System.IO
+
+        ///Type alias for the signature of deserialisers
+        type Reader = Stream -> Type -> obj option
+
+        ///Type alias for the signature of serialisers
+        type Writer = obj -> byte list
+
+
     ///Contains core types and functions used by Slumber
     [<AutoOpen>]
     module Core = 

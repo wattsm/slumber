@@ -3,12 +3,10 @@
 open System
 open System.IO
 open System.Runtime.Serialization
-open Slumber
+open Slumber.Framework.MessageIO
 
 module DataContract = 
     
-    open MessageIO
-
     ///Helper functions for use with data data contract serialisers
     [<AutoOpen>]
     module private Helpers = 
