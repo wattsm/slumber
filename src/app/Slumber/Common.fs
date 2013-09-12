@@ -248,8 +248,6 @@ module Common =
     [<AutoOpen>]
     module Operations = 
 
-        open Http
-
         ///Represents metadata about an operation request
         type OperationMetadata = {
             EndpointName : String;
