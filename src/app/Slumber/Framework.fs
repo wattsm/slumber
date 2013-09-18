@@ -312,6 +312,7 @@ module Framework =
         open System.IO
         open System.Reflection
         open System.Collections.Concurrent
+        open System.Web.Compilation
         open HandyFS.Types
 
         ///Instantiates and queries the first container description that can be found in the /bin/ folder 
@@ -319,14 +320,8 @@ module Framework =
 
             ///TODO Tidy up / abstract this function
 
-            let tryLoadAssembly path = 
-                try 
-                    path
-                    |> File.ReadAllBytes
-                    |> Assembly.Load
-                    |> Some
-                with
-                | _ -> None
+            BuildManager.GetReferencedAssemblies () 
+            |> ignore
 
             let tryGetTypes (assembly : Assembly) = 
                 try
@@ -340,12 +335,8 @@ module Framework =
                 with
                 | _ -> None
 
-            let binPath = 
-                Path.Combine (AppDomain.CurrentDomain.BaseDirectory, "bin")
-
             let types = 
-                Directory.GetFiles (binPath, "*.dll", SearchOption.TopDirectoryOnly)
-                |> Array.Parallel.choose tryLoadAssembly
+                AppDomain.CurrentDomain.GetAssemblies ()
                 |> Array.Parallel.collect tryGetTypes
                 |> Array.filter (implements typeof<IContainerDescription>)
 
