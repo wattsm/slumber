@@ -311,7 +311,7 @@ module Framework =
 
         open System.IO
         open System.Reflection
-        open System.Collections.Generic
+        open System.Collections.Concurrent
         open HandyFS.Types
 
         ///Instantiates and queries the first container description that can be found in the /bin/ folder 
@@ -360,14 +360,11 @@ module Framework =
         ///Instantiates and queries the first container description that can be found in the /bin/ folder and caches the result
         let get = 
 
-            let configs = Dictionary<Uri, Container> ()
+            let configs = ConcurrentDictionary<Uri, Container> ()
 
             fun (baseUrl : Uri) -> 
-                match (configs.TryGetValue baseUrl) with
-                | (true, config) -> config
-                | _ ->
-                    let config = find baseUrl
-
-                    configs.Add (baseUrl, config)
-                    config
+                configs.GetOrAdd (
+                    baseUrl, 
+                    find
+                )
 
