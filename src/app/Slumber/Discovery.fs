@@ -283,6 +283,7 @@ module Discovery =
                     return
                         {
                             Request = args.Request;
+                            Container = args.Container;
                             Reader = (getReaderInfo reader' messageType);
                             Writer = (getWriterInfo writer);
                             Target = 

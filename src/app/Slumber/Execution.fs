@@ -44,7 +44,8 @@ module Execution =
 
     ///Represents the arguments used to run the execution phase
     type ExecutionArgs = {
-        Request : Http.Request;
+        Request : Request;
+        Container : Container;
         Reader : ReaderInfo option;
         Writer : WriterInfo option;
         Target : TargetInfo;
@@ -55,7 +56,8 @@ module Execution =
         ///Empty execution args
         static member Empty = 
             {
-                Request = Http.Request.Empty;
+                Request = Request.Empty;
+                Container = Container.Empty;
                 Reader = None;
                 Writer = None;
                 Target = TargetInfo.Empty;
