@@ -6,7 +6,7 @@ Slumber is a small framework for creating REST applications in a functional styl
 
 Slumber defines a RESTful application using **containers**, **endpoints** and **bindings**.
 
-A **container** represents the top level of an application and is associated with its root URL - e.g. ``http://localhost/application/api``. Each container may contain zero or more **endpoints**. An **endpoint** is simply a URL which exposes some functionality. **Bindings** define the HTTP verbs that an endpoint supports and the F# functions which handle requests.
+A **container** represents the top level of an application and is associated with its root URL - e.g. **http://localhost/application/api**. Each container may contain zero or more **endpoints**. An **endpoint** is simply a URL which exposes some functionality. **Bindings** define the HTTP verbs that an endpoint supports and the F# functions which handle requests.
 
 #### Solution overview
 
@@ -18,7 +18,8 @@ The Slumber solution contains 5 projects:
 * ``Slumber.Example`` - contains a (very simple) example application, hosted by...
 * ``Slumber.Example.Web`` - A C# web app using the default Slumber HTTP handler to handle requests.
 
-The Slumber solution file is a Visual Studio 2012 solution, so may require tweaking to open in Visual Studio 2010.
+The Slumber solution file is a Visual Studio 2012 solution, so may require tweaking to open in Visual Studio 2010. The solution
+also uses NuGet package restore to get dependencies when built.
 
 #### Example
 
@@ -44,7 +45,7 @@ The easiest way to start working with Slumber is to register the supplied HTTP h
 
 _(The configuration shown here is for IIS 7.5 using an .Net 4 and integrated pipeline mode.)_
 
-Any request made to URLs below ``api`` will now be handled by Slumber.
+Any request made to URLs below **api** will now be handled by Slumber.
 
 When the application first starts Slumber's HTTP handler will look for a type implementing the ``Slumber.Framework.Core.IContainerDescription`` interface. The handler will pass
 HTTP requests to the container described by this type.
@@ -84,7 +85,7 @@ containerAt (relativeUrl baseUrl "/api")
 ```
 
 This line tells Slumber that the container's root URL is the web applications's base URL plus "/api". For example, if the application is a virtual directory then it's base URL
-might be ``http://localhost/myapp``, meaning this container would be rooted at ``http://localhost/myapp/api``.
+might be **http://localhost/myapp**, meaning this container would be rooted at **http://localhost/myapp/api**.
 
 ```fsharp
 |> authenticatedBy App.Security.authenticate true
@@ -98,7 +99,7 @@ endpointAt "/"
 |> supporting (public' get App.Services.list)
 ```
 
-Endpoint URLs are relative to the container's URL, so if we continue from the previous example this endpoint will be at ``http://localhost/myapp/api/``. The ``public'`` function
+Endpoint URLs are relative to the container's URL, so if we continue from the previous example this endpoint will be at **http://localhost/myapp/api/**. The ``public'`` function
 tells Slumber that this service can be accessed without authenticating. 
 
 ```fsharp
@@ -140,10 +141,10 @@ let get (search : String option) =  ...
 ```
 
 Slumber will get value type and string arugments from URL segments or the query string. If the argument type is not ``Option<T>`` and a corresponding value
-cannot be found then Slumber will return an ``HTTP 400`` response.
+cannot be found then Slumber will return an **HTTP 400** response.
 
 Functions may also accept a single argument representing the request body. The argument type must be a reference type. Again, if the argument is not ``Option<T>`` then if the request has no body
-Slumber will return an ``HTTP 400`` response.
+Slumber will return an **HTTP 400** response.
 
 Below are some examples.
 
@@ -169,7 +170,17 @@ You can also get the ``OperationMetadata`` for the current request by adding arg
 user (if authenticated).
 
 Slumber will generate a response based on the return value of your function. If you want fine grained control over the response body, HTTP status code and headers you can return an ``OperationResult``. 
-Otherwise the response will be a simple ``HTTP 200`` with the serialised form of your function's return value making up the body.
+Otherwise the response will be a simple **HTTP 200** with the serialised form of your function's return value making up the body.
+
+```fsharp
+module Teapots = 
+	let get () =
+		{
+			StatusCode = (Some 418);
+			Resource = (Some "I'm a teapot!");
+			Headers = [ ("is-teapot", "true"); ];
+		}
+```
 
 #### HTTP status codes for errors
 
