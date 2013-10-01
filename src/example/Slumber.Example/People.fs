@@ -14,50 +14,29 @@ module People =
 
         [<DataContract (Name = "person-summary", Namespace = "")>]
         type PersonSummary = {
-
-            [<field: DataMember (Name = "id")>]
-            Id : Int32;
-
-            [<field: DataMember (Name = "full-name")>]
-            FullName : String;
-
-            [<field: DataMember (Name = "age")>]
-            Age : Int32;
-
-            [<field: DataMember (Name = "url")>]
-            Url : String;
-
-            [<field: DataMember (Name = "created-by")>]
-            CreatedBy : String
+            [<field: DataMember (Name = "id")>] Id : Int32;
+            [<field: DataMember (Name = "full-name")>] FullName : String;
+            [<field: DataMember (Name = "age")>] Age : Int32;
+            [<field: DataMember (Name = "url")>] Url : String;
+            [<field: DataMember (Name = "created-by")>] CreatedBy : String
         }
 
         [<DataContract (Name = "person-catalog", Namespace = "")>]
         type PersonCatalog = {
-
-            [<field: DataMember (Name = "self")>]
-            Self : String;
-
-            [<field: DataMember (Name = "people")>]
-            People : PersonSummary seq;
+            [<field: DataMember (Name = "self")>] Self : String;
+            [<field: DataMember (Name = "people")>] People : PersonSummary seq;
         }
 
         [<DataContract (Name = "person", Namespace = "")>]
-        type PersonMessage () = 
-
-            [<DataMember (Name = "full-name")>]
-            member val FullName = String.Empty with get, set
-
-            [<DataMember (Name = "age")>]
-            member val Age = 0 with get, set
+        type PersonMessage = {
+            [<field: DataMember (Name = "full-name", Order = 0)>] FullName : String;
+            [<field: DataMember (Name = "age", Order = 1, IsRequired = false)>] Age : Int32;
+        }
 
         [<DataContract (Name = "person-created", Namespace = "")>]
         type PersonCreated = {
-
-            [<field: DataMember (Name = "id")>]
-            Id : Int32;
-
-            [<field: DataMember (Name = "url")>]
-            Url : String;
+            [<field: DataMember (Name = "id")>] Id : Int32;
+            [<field: DataMember (Name = "url")>] Url : String;
         }
 
     let private data = 

@@ -13,22 +13,14 @@ module Startup =
 
         [<DataContract (Name = "service")>] 
         type Service = {
-
-            [<field: DataMember (Name = "name")>]
-            Name : String;
-
-            [<field: DataMember (Name = "url")>]
-            Url : String;
+            [<field: DataMember (Name = "name")>] Name : String;
+            [<field: DataMember (Name = "url")>] Url : String;
         }
 
         [<DataContract (Name = "service-catalog")>]
         type ServiceCatalog = {
-
-            [<field: DataMember (Name = "self")>]
-            Self : String;
-
-            [<field: DataMember (Name = "services")>]
-            Services : Service seq;
+            [<field: DataMember (Name = "self")>] Self : String;
+            [<field: DataMember (Name = "services")>] Services : Service seq;
         }
     
     let getCatalog (meta : OperationMetadata) = 
