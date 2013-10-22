@@ -109,6 +109,7 @@ module Execution =
                 {
                     Metadata = 
                         {
+                            ContainerUrl = args.Container.BaseUrl;
                             EndpointName = args.Target.EndpointName;
                             Request = args.Request;
                             Parameters = args.Target.Parameters;

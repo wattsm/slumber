@@ -250,6 +250,7 @@ module Common =
 
         ///Represents metadata about an operation request
         type OperationMetadata = {
+            ContainerUrl : Uri;
             EndpointName : String;
             Request : Request;
             Parameters : (String * String) list;
@@ -260,6 +261,7 @@ module Common =
             ///Empty operation metadata
             static member Empty = 
                 {
+                    ContainerUrl = Uri ("http://localhost", UriKind.Absolute);
                     EndpointName = String.Empty;
                     Request = Request.Empty;
                     Parameters = [];
