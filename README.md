@@ -2,7 +2,7 @@
 
 Slumber is a small framework for creating REST applications in a functional style using F#, inspired heavily by the excellent [OpenRasta](http://openrasta.org/).
 
-##### The short, short version...
+#### The short, short version...
 
 The [wiki](wiki) contains a more detailed overview of Slumber, but a short overview is given below.
 
@@ -52,3 +52,11 @@ type Config () =
       |> writing MediaTypes.Application.Json Json.write
       |> forwarding MediaTypes.Text.Html MediaTypes.Text.Xml
 ```
+
+#### Quick links
+
+Links to the main [wiki](wiki) pages:
+
+* [Install](wiki/install)
+* [Defining services](wiki/defining-services)
+* [Functions and arguments](wiki/functions-and-arguments)
