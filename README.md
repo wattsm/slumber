@@ -4,7 +4,7 @@ Slumber is a small framework for creating REST applications in a functional styl
 
 #### The short, short version...
 
-The [wiki](wiki) contains a more detailed overview of Slumber, but a short overview is given below.
+The [wiki](/wattsm/slumber/wiki) contains a more detailed overview of Slumber, but a short overview is given below.
 
 Some business logic:
 
@@ -55,8 +55,8 @@ type Config () =
 
 #### Quick links
 
-Links to the main [wiki](wiki) pages:
+Links to the main [wiki](/wattsm/slumber/wiki) pages:
 
-* [Install](wiki/install)
-* [Defining services](wiki/defining-services)
-* [Functions and arguments](wiki/functions-and-arguments)
+* [Install](/wattsm/slumber/wiki/install)
+* [Defining services](/wattsm/slumber/wiki/defining-services)
+* [Functions and arguments](/wattsm/slumber/wiki/functions-and-arguments)
