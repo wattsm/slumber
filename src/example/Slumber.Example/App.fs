@@ -14,7 +14,7 @@ type App () =
 
     static let mutable _initialised = false
 
-    member this.Application_BeginRequest (_ : obj, _ : EventArgs) =
+    member this.Application_Start (_ : obj, _ : EventArgs) =
         if (not _initialised) then
 
             _initialised <- true
