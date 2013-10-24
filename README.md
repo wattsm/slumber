@@ -52,11 +52,3 @@ type Config () =
       |> writing MediaTypes.Application.Json Json.write
       |> forwarding MediaTypes.Text.Html MediaTypes.Text.Xml
 ```
-
-For a web application with base URL http://localhost/myapp the following services are now available:
-
-* GET http://localhost/myapp/api/people - list all people
-* POST http://localhost/myapp/api/people - create a new person
-* GET http://localhost/myapp/api/people/search - search people
-* GET http://localhost/myapp/api/people/{id} - get person with ID {id}
-* PUT http://localhost/myapp/api/people/{id} - update person with ID {id}
