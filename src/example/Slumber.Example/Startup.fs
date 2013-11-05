@@ -11,20 +11,20 @@ module Startup =
     [<AutoOpen>]
     module Model = 
 
-        [<DataContract (Name = "service")>] 
+        [<DataContract (Name = "service", Namespace = "")>] 
         type Service = {
             [<field: DataMember (Name = "name")>] Name : String;
             [<field: DataMember (Name = "url")>] Url : String;
         }
 
-        [<DataContract (Name = "service-catalog")>]
+        [<DataContract (Name = "service-catalog", Namespace = "")>]
         type ServiceCatalog = {
             [<field: DataMember (Name = "self")>] Self : String;
             [<field: DataMember (Name = "services")>] Services : Service seq;
         }
     
     let getCatalog (meta : OperationMetadata) = 
-        let baseUrl = meta.Request.Url.BaseUrl
+        let baseUrl = meta.ContainerUrl
         in
             {
                 Self = baseUrl.AbsoluteUri;
