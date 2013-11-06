@@ -53,6 +53,10 @@ type Config () =
       |> forwarding MediaTypes.Text.Html MediaTypes.Text.Xml
 ```
 
+### Working example
+
+The Slumber solution contains a working example - [details can be found here](https://github.com/wattsm/slumber/wiki/running-the-example).
+
 #### Quick links
 
 Links to the main [wiki](https://github.com/wattsm/slumber/wiki) pages:
@@ -60,3 +64,4 @@ Links to the main [wiki](https://github.com/wattsm/slumber/wiki) pages:
 * [Install](https://github.com/wattsm/slumber/wiki/install)
 * [Defining services](https://github.com/wattsm/slumber/wiki/defining-services)
 * [Functions and arguments](https://github.com/wattsm/slumber/wiki/functions-and-arguments)
+* [Running the example](https://github.com/wattsm/slumber/wiki/running-the-example)
