@@ -21,7 +21,7 @@ module Security =
   let authenticate (req : Request) = ...
 ```
 
-Exposed as REST services:
+Configured in Slumber:
 
 ```fsharp
 type Config () = 
@@ -52,6 +52,28 @@ type Config () =
       |> writing MediaTypes.Application.Json Json.write
       |> forwarding MediaTypes.Text.Html MediaTypes.Text.Xml
 ```
+
+Exposed as REST services:
+
+```text
+
+GET http://localhost/app/people/search?term=Smith
+
+=>
+
+200 Ok
+<people>
+  <person>
+    <name>John Smith</name>
+    <url>http://localhost/app/people/1</url>
+  </person>
+  <person>
+    <name>Jane Smith</name>
+    <url>http://localhost/app/people/2</url>
+  </person>
+</people>
+```
+
 
 ### Working example
 
