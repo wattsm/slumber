@@ -1,4 +1,4 @@
-﻿namespace Slumber
+namespace Slumber
 
 open System
 
@@ -38,16 +38,49 @@ module Common =
         ///Contains constants for HTTP status codes
         [<RequireQualifiedAccess>]
         module StatusCodes = 
+
+            ///http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html
         
+            let [<Literal>] Continue = 100
+            let [<Literal>] SwitchingProtocols = 101
             let [<Literal>] Ok = 200
+            let [<Literal>] Created = 201
+            let [<Literal>] Accepted = 202
+            let [<Literal>] NonAuthoritativeInformation = 203
+            let [<Literal>] NoContent = 204
+            let [<Literal>] ResetContent = 205
+            let [<Literal>] PartialContent = 206
+            let [<Literal>] MultipleChoices = 300
+            let [<Literal>] MovedPermanently = 301
+            let [<Literal>] Found = 302
+            let [<Literal>] SeeOther = 303
+            let [<Literal>] NotModified = 304
+            let [<Literal>] UseProxy = 305
+            let [<Literal>] TemporaryRedirect = 307
             let [<Literal>] BadRequest = 400
             let [<Literal>] Unauthorised = 401
+            let [<Literal>] PaymentRequired = 402
+            let [<Literal>] Forbidden = 403
             let [<Literal>] NotFound = 404
             let [<Literal>] MethodNotAllowed = 405
             let [<Literal>] NotAcceptable = 406
+            let [<Literal>] ProxyAuthenticationRequired = 407
+            let [<Literal>] RequestTimeout = 408
+            let [<Literal>] Conflict = 409
+            let [<Literal>] Gone = 410
+            let [<Literal>] LengthRequired = 411
+            let [<Literal>] PreconditionFailed = 412
+            let [<Literal>] RequestEntityTooLarge = 413
+            let [<Literal>] RequestUriTooLong = 414
             let [<Literal>] ContentTypeNotSupported = 415
+            let [<Literal>] RequestedRangeNotSatisfiable = 416
+            let [<Literal>] ExpectationFailed = 417
             let [<Literal>] InternalServerError = 500            
             let [<Literal>] NotImplemented = 501            
+            let [<Literal>] BadGateway = 502
+            let [<Literal>] ServiceUnavailable = 503
+            let [<Literal>] GatewayTimeout = 504
+            let [<Literal>] HttpVersionNotSupported = 505
 
         ///Contains constans for HTTP verbs
         [<RequireQualifiedAccess>]
