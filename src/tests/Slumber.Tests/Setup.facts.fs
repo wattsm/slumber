@@ -215,6 +215,123 @@ module ``Setup facts`` =
             let [<Fact>] ``Type set correctly for resources`` () =
                 getReturnType' (fun () -> "Hello, World") |> getType |> should equal typeof<String>
 
+            let [<Fact>] ``Returns Void for async unit`` () = 
+                getReturnType' (fun () -> async { return () }) |> isVoid |> should be True
+
+            let [<Fact>] ``Returns Result for async OperationResult`` () = 
+                getReturnType' (fun () -> async { return OperationResult.Empty }) |> isResult |> should be True
+
+            let [<Fact>] ``SetupException is thrown for async optional OperationResult`` () = 
+                (fun () ->
+                    getReturnType' (fun () -> async { return (Some OperationResult.Empty) })
+                    |> ignore
+                ) |> should throw typeof<SetupException>
+
+            let [<Fact>] ``Returns Resource for async other types`` () = 
+                getReturnType' (fun () -> async { return "Hello, World" }) |> isResource |> should be True
+
+            let [<Fact>] ``Optional flag set correctly for async optional resources`` () = 
+                getReturnType' (fun () -> async { return (Some "Hello, World") }) |> isOptional |> should be True
+
+            let [<Fact>] ``Optional flag set correctly for async non-optional resources`` () =
+                getReturnType' (fun () -> async { return "Hello, World" }) |> isOptional |> should be False
+
+            let [<Fact>] ``Type set correctly for async resource`` () = 
+                getReturnType' (fun () -> async { return "Hello, World" }) |> getType |> should equal typeof<String>
+
+        [<Trait (Traits.Names.Module, ModuleName)>]
+        module ``getOperationResult function`` = 
+
+            [<AutoOpen>]
+            module Helpers = 
+
+                let getOperationResult' value returnType = 
+                    getOperationResult (box value) returnType
+
+            let [<Fact>] ``Returns OperationResult.Empty for Void return types`` () = 
+                getOperationResult' () Void |> should equal OperationResult.Empty
+
+            let [<Fact>] ``Returns value as OperationResult for Result return types`` () = 
+
+                let result = { OperationResult.Empty with StatusCode = (Some 418); }
+
+                getOperationResult' result Result |> should equal result
+
+            let [<Fact>] ``Returns value as resource for optional Resource return type when value is Some`` () = 
+                
+                let returnType = ReturnType.Resource (true, typeof<String>)
+                let result = getOperationResult' (Some "Hello, World") returnType
+
+                result.StatusCode |> Option.isNone |> should be True
+                result.Resource |> Option.get |> should equal (box "Hello, World")
+
+            let [<Fact>] ``Returns None as resource for optional Resource return types when the value is None`` () = 
+                
+                let returnType = ReturnType.Resource (true, typeof<String>)
+                let result = getOperationResult' None returnType
+
+                result.StatusCode |> Option.isNone |> should be True
+                result.Resource |> Option.isNone |> should be True
+
+            let [<Fact>] ``Returns value as resource for non-optional Resource return types`` () = 
+                
+                let returnType = ReturnType.Resource (false, typeof<String>)
+                let result = getOperationResult' "Hello, World" returnType
+
+                result.StatusCode |> Option.isNone |> should be True
+                result.Resource |> Option.get |> should equal (box "Hello, World")
+
+            let [<Fact>] ``Executes async values for Void return types`` () = 
+
+                let run = ref true
+
+                let value = 
+                    async { 
+                        run := true
+                        return ()
+                    }
+
+                getOperationResult' value Void |> ignore
+
+                run.Value |> should be True
+
+            let [<Fact>] ``Returns OperationResult.Empty for async Void return types`` () =
+                getOperationResult' (async { return () }) Void |> should equal OperationResult.Empty
+
+            let [<Fact>] ``Returns execution result of value as OperationResult for async Result return types`` () =
+                
+                let result = { OperationResult.Empty with StatusCode = (Some 418); }
+                let asyncResult = async { return result }
+
+                getOperationResult' asyncResult Result |> should equal result
+
+            let [<Fact>] ``Returns execution result as resource for optional async Resource return types when execution result of value is Some`` () = 
+                
+                let returnType = ReturnType.Resource (true, typeof<String>)
+                let value = async { return (Some "Hello, World") }
+                let result = getOperationResult' value returnType
+
+                result.StatusCode |> Option.isNone |> should be True
+                result.Resource |> Option.get |> should equal (box "Hello, World")
+
+            let [<Fact>] ``Returns None as resource for optional async Resource return types when execution result of value is None`` () = 
+                
+                let returnType = ReturnType.Resource (true, typeof<String>)
+                let value = async { return None }
+                let result = getOperationResult' value returnType
+
+                result.StatusCode |> Option.isNone |> should be True
+                result.Resource |> Option.isNone |> should be True
+
+            let [<Fact>] ``Returns execution result of value as resource for non-optional async Resource return types`` () =
+                
+                let returnType = ReturnType.Resource (false, typeof<String>)
+                let value = async { return "Hello, World" }
+                let result = getOperationResult' value returnType
+
+                result.StatusCode |> Option.isNone |> should be True
+                result.Resource |> Option.get |> should equal (box "Hello, World")
+
         [<Trait (Traits.Names.Module, ModuleName)>]
         module ``get function`` = 
 

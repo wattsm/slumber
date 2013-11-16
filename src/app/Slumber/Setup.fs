@@ -22,8 +22,37 @@ module Setup =
         open HandyFS.Types
         open HandyFS.Types.Summaries
 
-        let [<Literal>] FunctionInvokeMethodName = "Invoke"
+        ///Contains functions that support the exection of Async<'T> operations
+        module private AsyncSupport = 
 
+            open HandyFS.Maybe
+
+            let private getValueType (value : obj) = 
+                match value with
+                | null -> None
+                | _ -> Some (value.GetType ())
+
+            let getAsyncReturnType (type' : Type) = 
+                if (type'.IsGenericType && type'.GetGenericTypeDefinition () = typedefof<Async<_>>) then
+                    let args = type'.GetGenericArguments ()
+                    in Some (args.[0])
+                else
+                    None
+
+            let getAsyncReturnValue (value : obj) = 
+                maybe {
+
+                    let! valueType = getValueType value
+                    let! returnType = getAsyncReturnType valueType
+                    
+                    let genericRunMethod = typeof<Async>.GetMethod ("RunSynchronously")     
+                    let runMethod = genericRunMethod.MakeGenericMethod ([| returnType |])
+
+                    return runMethod.Invoke (null, [| value; null; null; |])
+                }
+
+        let [<Literal>] FunctionInvokeMethodName = "Invoke"
+        
         ///Union describing possible binding target types
         type TargetType =
             | Function
@@ -152,9 +181,14 @@ module Setup =
 
         ///Gets the return type of a method
         let getReturnType (method' : MethodInfo) = 
+                    
+            let returnType = 
+                match (AsyncSupport.getAsyncReturnType method'.ReturnType) with
+                | Some type' -> type'
+                | _ -> method'.ReturnType
             
             let summary = 
-                getTypeSummary method'.ReturnType
+                getTypeSummary returnType
 
             if (isUnit summary.BaseType) then
                 
@@ -207,20 +241,26 @@ module Setup =
 
                 Some (valueProperty.GetValue (value))
             else
-                None
+                None        
 
         ///Gets an operation result for the given value
         let getOperationResult (value : obj) returnType = 
+
+            let value' = 
+                match (AsyncSupport.getAsyncReturnValue value) with
+                | Some x -> x
+                | _ -> value
+
             match returnType with
             | Void -> OperationResult.Empty
-            | Result -> value :?> OperationResult
+            | Result -> value' :?> OperationResult
             | Resource (isOptional, resourceType) ->
 
                 let resource = 
                     if isOptional then
-                        convertOptionalResource resourceType value
+                        convertOptionalResource resourceType value'
                     else
-                        Some value
+                        Some value'
 
                 { OperationResult.Empty with Resource = resource; }
 
@@ -244,6 +284,8 @@ module Setup =
 
                             let argValues = getArgumentValues context argTypes
                             let returnValue = method'.Invoke (target, argValues)
+
+                            //TODO Execute Async<T>
 
                             getOperationResult 
                             <| returnValue 
