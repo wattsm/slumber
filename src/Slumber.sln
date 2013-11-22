@@ -13,6 +13,9 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".nuget", ".nuget", "{35CC75
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "1 tests", "1 tests", "{D676FD1D-8008-473E-858B-1F19A990FB3B}"
+	ProjectSection(SolutionItems) = preProject
+		tests\Traits.fs = tests\Traits.fs
+	EndProjectSection
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Slumber.Tests", "tests\Slumber.Tests\Slumber.Tests.fsproj", "{179CA639-9A78-4CC4-A907-0DA32FDA12D2}"
 EndProject
@@ -23,6 +26,8 @@ EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Slumber.Example", "example\Slumber.Example\Slumber.Example.fsproj", "{037B7E04-E4B4-4FA6-98B1-4E88A728B70B}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Slumber.Example.Web", "example\Slumber.Example.Web\Slumber.Example.Web.csproj", "{99B47ED9-D4DC-48EA-847A-E9211208301D}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Slumber.IO.Tests", "tests\Slumber.IO.Tests\Slumber.IO.Tests.fsproj", "{703E4FC6-B282-4F75-B76C-7ADCB973ED14}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -50,6 +55,10 @@ Global
 		{99B47ED9-D4DC-48EA-847A-E9211208301D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{99B47ED9-D4DC-48EA-847A-E9211208301D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{99B47ED9-D4DC-48EA-847A-E9211208301D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{703E4FC6-B282-4F75-B76C-7ADCB973ED14}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{703E4FC6-B282-4F75-B76C-7ADCB973ED14}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{703E4FC6-B282-4F75-B76C-7ADCB973ED14}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{703E4FC6-B282-4F75-B76C-7ADCB973ED14}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -58,6 +67,7 @@ Global
 		{72EA608C-B0F9-4A39-B27F-3461B320235B} = {0873E11B-6F1A-472A-B9CD-C66518F9BF1A}
 		{642B235C-62CA-4DC4-8A19-232B4FB27372} = {0873E11B-6F1A-472A-B9CD-C66518F9BF1A}
 		{179CA639-9A78-4CC4-A907-0DA32FDA12D2} = {D676FD1D-8008-473E-858B-1F19A990FB3B}
+		{703E4FC6-B282-4F75-B76C-7ADCB973ED14} = {D676FD1D-8008-473E-858B-1F19A990FB3B}
 		{037B7E04-E4B4-4FA6-98B1-4E88A728B70B} = {5EEC7C6A-35C7-42D1-9A3B-110252D86D34}
 		{99B47ED9-D4DC-48EA-847A-E9211208301D} = {5EEC7C6A-35C7-42D1-9A3B-110252D86D34}
 	EndGlobalSection

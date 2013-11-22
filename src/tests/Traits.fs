@@ -1,6 +1,4 @@
-﻿namespace Slumber.Tests
-
-module Traits =
+﻿module Traits
 
     module Names =
 
