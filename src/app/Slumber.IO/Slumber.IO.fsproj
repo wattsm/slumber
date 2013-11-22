@@ -50,6 +50,9 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="..\AssemblyInfo.Common.fs">
+      <Link>AssemblyInfo.Common.fs</Link>
+    </Compile>
     <Compile Include="DataContract.fs" />
   </ItemGroup>
   <PropertyGroup>

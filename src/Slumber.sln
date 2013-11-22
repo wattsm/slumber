@@ -4,6 +4,9 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Slumber", "app\Slumber\Slumber.fsproj", "{72EA608C-B0F9-4A39-B27F-3461B320235B}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "0 app", "0 app", "{0873E11B-6F1A-472A-B9CD-C66518F9BF1A}"
+	ProjectSection(SolutionItems) = preProject
+		app\AssemblyInfo.Common.fs = app\AssemblyInfo.Common.fs
+	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".nuget", ".nuget", "{35CC75DE-73C6-413B-AA88-7A1979CE44B5}"
 	ProjectSection(SolutionItems) = preProject
