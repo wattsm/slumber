@@ -14,38 +14,43 @@ type App () =
 
     static let mutable _initialised = false
 
+    ///Sets up log4net logging
+    let configureLogging () = 
+
+        XmlConfigurator.Configure (
+            new FileInfo ( 
+                Path.Combine (
+                    AppDomain.CurrentDomain.BaseDirectory,
+                    "log4net.config"
+                )
+            )
+        )
+        |> ignore
+
+        let log = 
+            LogManager.GetLogger LogName
+
+        setLogWriter (fun entry ->
+            match entry with
+            | Debug msg -> 
+                if log.IsDebugEnabled then
+                    log.Debug (msg)
+            | Info msg ->
+                if log.IsInfoEnabled then
+                    log.Info (msg)
+            | Warning msg ->
+                if log.IsWarnEnabled then
+                    log.Warn (msg)
+            | Error (msg, err) ->
+                if log.IsErrorEnabled then
+                    match err with 
+                    | Some ex ->  log.Error (msg, ex)
+                    | _ -> log.Error (msg)
+        )
+
     member this.Application_Start (_ : obj, _ : EventArgs) =
         if (not _initialised) then
 
             _initialised <- true
 
-            XmlConfigurator.Configure (
-                new FileInfo ( 
-                    Path.Combine (
-                        AppDomain.CurrentDomain.BaseDirectory,
-                        "log4net.config"
-                    )
-                )
-            )
-            |> ignore
-
-            let log = 
-                LogManager.GetLogger LogName
-
-            setLogWriter (fun entry ->
-                match entry with
-                | Debug msg -> 
-                    if log.IsDebugEnabled then
-                        log.Debug (msg)
-                | Info msg ->
-                    if log.IsInfoEnabled then
-                        log.Info (msg)
-                | Warning msg ->
-                    if log.IsWarnEnabled then
-                        log.Warn (msg)
-                | Error (msg, err) ->
-                    if log.IsErrorEnabled then
-                        match err with 
-                        | Some ex ->  log.Error (msg, ex)
-                        | _ -> log.Error (msg)
-            )
+            configureLogging ()

@@ -1,11 +1,13 @@
 ﻿namespace Slumber.Example
 
 open System
+open System.Text.RegularExpressions
 open System.Runtime.Serialization
 
 module Startup = 
 
     open Slumber    
+    open Slumber.Framework
     open Slumber.Common.Http
 
     [<AutoOpen>]
@@ -24,20 +26,28 @@ module Startup =
         }
     
     let getCatalog (meta : OperationMetadata) = 
+
         let baseUrl = meta.ContainerUrl
-        in
-            {
-                Self = baseUrl.AbsoluteUri;
-                Services = 
-                    [
-                        {
-                            Name = "get-catalog";
-                            Url = baseUrl.AbsoluteUri;
-                        };
-                        {
-                            Name = "get-people";
-                            Url = string (createAbsoluteUri baseUrl "people");
-                        };
-                    ];
-            }
+        let container = ImplicitConfiguration.get baseUrl
+
+        let services = 
+            container.Endpoints
+            |> List.filter (fun endpoint -> not (Regex.IsMatch (endpoint.Template, "{.+?}"))) //Display only top level, non-parameterised endpoints
+            |> List.map (fun endpoint ->
+
+                    let url = 
+                        match endpoint.Template with
+                        | "/" -> string baseUrl
+                        | _ -> string (createAbsoluteUri baseUrl endpoint.Template)
+
+                    {
+                        Name = endpoint.Name;
+                        Url = url;
+                    }
+                )
+
+        {
+            Self = baseUrl.AbsoluteUri;
+            Services = services;
+        }
 

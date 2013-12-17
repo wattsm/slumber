@@ -9,6 +9,10 @@ open Slumber.Common.Operations.Metadata
 
 module People = 
 
+    let private getUrl baseUrl (relativeUrl : String) = 
+        Uri (baseUrl, relativeUrl)
+        |> string
+
     [<AutoOpen>]
     module Model = 
 
@@ -20,6 +24,16 @@ module People =
             [<field: DataMember (Name = "url")>] Url : String;
             [<field: DataMember (Name = "created-by")>] CreatedBy : String
         }
+        with
+
+            static member BasedOn baseUrl (person : Repository.Person) = 
+                {
+                    Id = person.Id;
+                    FullName = person.FullName;
+                    Age = person.Age;
+                    Url = (getUrl baseUrl (sprintf "/people/%d" person.Id));
+                    CreatedBy = person.CreatedBy;
+                }
 
         [<DataContract (Name = "person-catalog", Namespace = "")>]
         type PersonCatalog = {
@@ -39,98 +53,67 @@ module People =
             [<field: DataMember (Name = "url")>] Url : String;
         }
 
-    let private data = 
-        Dictionary<int, PersonSummary> ()
+    let getPeople (repository : Repository.IRepository) = 
+        fun (search : String option) (meta : OperationMetadata) ->
 
-    let private getUrl (relativeUrl : String) (meta : OperationMetadata) = 
-        Uri (meta.Request.Url.BaseUrl, relativeUrl)
-        |> string
+            let people = 
+                repository.All ()
+                |> Seq.map (PersonSummary.BasedOn meta.ContainerUrl)
 
-    let getPeople (search : String option) (meta : OperationMetadata) =
-
-        let people = 
-            data.Values
-            |> Seq.filter (fun person ->
-                    match search with
-                    | Some term -> person.FullName.Contains (term)
-                    | _ -> true
-                )
-
-        {
-            Self = (getUrl "people" meta);
-            People = people;
-        }
-
-    let getPerson (id : Int32) = 
-        try 
-
-            let success, person = 
-                data.TryGetValue (id)
-                
-            if success then
-                OperationResult.ResourceOnly person
-            else
-                OperationResult.StatusOnly 404
-        
-        with
-        | :? FormatException -> OperationResult.StatusOnly 400
-
-    let addPerson (message : PersonMessage) (meta : OperationMetadata) = 
-        
-        let id = 
-            if (data.Count = 0) then
-                1
-            else
-                data.Keys
-                |> Seq.max
-                |> ((+) 1)
-
-        let userName = 
-            match meta.User with
-            | Some user -> user.Id
-            | _ -> String.Empty
-
-        let url =   
-            meta
-            |> getUrl (String.Format ("people/{0}", id))
-
-        let person = 
             {
-                Id = id;
-                FullName = message.FullName;
-                Age = message.Age;
-                Url = url;
-                CreatedBy = userName;
+                Self = (getUrl meta.ContainerUrl "people");
+                People = people;
             }
 
-        data.Add (id, person)
+    let getPerson (repository : Repository.IRepository) = 
+        fun (id : Int32) (meta : OperationMetadata) ->
+            try 
+                match (repository.Find id) with
+                | Some person -> OperationResult.ResourceOnly (PersonSummary.BasedOn meta.ContainerUrl person)
+                | _ -> OperationResult.StatusOnly 404        
+            with
+            | :? FormatException -> OperationResult.StatusOnly 400
 
-        {
-            Id = id;
-            Url = url;
-        }
-        |> OperationResult.ResourceOnly 
+    let addPerson (repository : Repository.IRepository) = 
+        fun (message : PersonMessage) (meta : OperationMetadata) ->
+        
+            let userName = 
+                match meta.User with
+                | Some user -> user.Id
+                | _ -> String.Empty
 
-    let deletePerson id = 
-        data.Remove (id) |> ignore
-
-    let updatePerson id (update : PersonMessage) = 
-            
-        let success, existing =
-            data.TryGetValue (id)
-
-        if success then
-    
-            let updated = 
+            let person = 
                 {
-                    existing
-                    with 
-                        Age = update.Age;
-                        FullName = update.FullName;
+                    Repository.Person.Empty
+                    with
+                        FullName = message.FullName;
+                        Age = message.Age;
+                        CreatedBy = userName;
                 }
+                |> repository.Save
 
-            data.[id] <- updated
+            let url =  getUrl meta.ContainerUrl (sprintf "/people/%d" person.Id)
 
-            OperationResult.StatusOnly 200
-        else
-            OperationResult.StatusOnly 404
+            OperationResult.ResourceOnly { Id = person.Id; Url = url; }
+
+    let deletePerson (repository : Repository.IRepository) =
+        fun id ->
+            repository.Delete id
+
+    let updatePerson (repository : Repository.IRepository) = 
+        fun id (update : PersonMessage) ->
+            match (repository.Find id) with
+            | Some person ->
+
+                {
+                    person
+                    with
+                        FullName = update.FullName;
+                        Age = update.Age
+                }
+                |> repository.Save
+                |> ignore
+
+                OperationResult.StatusOnly 200
+
+            | _ -> OperationResult.StatusOnly 404
