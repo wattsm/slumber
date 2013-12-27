@@ -1,6 +1,7 @@
 ﻿namespace Slumber
 
 open System
+open System.Collections.Concurrent
 open Slumber.Framework
 
 ///Contains functions for generating Slumber configuration in a fluent style
@@ -75,29 +76,35 @@ module Setup =
             | Metadata
 
         ///Gets the argument type for a given type
-        let getArgumentType (parameter : ParameterInfo) = 
+        let getArgumentType  = 
+
+            let cache = ConcurrentDictionary<ParameterInfo, ArgumentType> ()
+
+            let add (parameter : ParameterInfo) =
             
-            let summary = 
-                getTypeSummary parameter.ParameterType
+                let summary = getTypeSummary parameter.ParameterType
 
-            if (isUnit summary.BaseType) then
+                if (isUnit summary.BaseType) then
 
-                Unit'
+                    Unit'
 
-            else if (isType<OperationMetadata> summary.BaseType) then
+                else if (isType<OperationMetadata> summary.BaseType) then
 
-                if summary.IsOptional then
-                    invalidSetup "Optional OperationMetadata is not supported."
+                    if summary.IsOptional then
+                        invalidSetup "Optional OperationMetadata is not supported."
 
-                Metadata
+                    Metadata
 
-            else if (summary.BaseType.IsValueType || isType<String> summary.BaseType) then
+                else if (summary.BaseType.IsValueType || isType<String> summary.BaseType) then
 
-                Parameter (parameter.Name, summary.IsOptional, summary.BaseType)
+                    Parameter (parameter.Name, summary.IsOptional, summary.BaseType)
 
-            else
+                else
 
-                Message (summary.IsOptional, summary.BaseType)
+                    Message (summary.IsOptional, summary.BaseType)
+
+            fun parameter ->
+                cache.GetOrAdd (parameter, add)
 
         ///Gets the argument types for a given method
         let getArgumentTypes (method' : MethodInfo) = 
@@ -180,30 +187,37 @@ module Setup =
             | Result
 
         ///Gets the return type of a method
-        let getReturnType (method' : MethodInfo) = 
+        let getReturnType = 
+
+            let cache = ConcurrentDictionary<MethodInfo, ReturnType> ()
+
+            let add (method' : MethodInfo) =
                     
-            let returnType = 
-                match (AsyncSupport.getAsyncReturnType method'.ReturnType) with
-                | Some type' -> type'
-                | _ -> method'.ReturnType
+                let returnType = 
+                    match (AsyncSupport.getAsyncReturnType method'.ReturnType) with
+                    | Some type' -> type'
+                    | _ -> method'.ReturnType
             
-            let summary = 
-                getTypeSummary returnType
+                let summary = 
+                    getTypeSummary returnType
 
-            if (isUnit summary.BaseType) then
+                if (isUnit summary.BaseType) then
                 
-                Void
+                    Void
 
-            else if (isType<OperationResult> summary.BaseType) then
+                else if (isType<OperationResult> summary.BaseType) then
 
-                if summary.IsOptional then
-                    invalidSetup "Optional OperationResult is not supported."
+                    if summary.IsOptional then
+                        invalidSetup "Optional OperationResult is not supported."
 
-                Result
+                    Result
 
-            else
+                else
 
-                Resource (summary.IsOptional, summary.BaseType)
+                    Resource (summary.IsOptional, summary.BaseType)
+
+            fun method' ->
+                cache.GetOrAdd (method', add)
 
         ///Gets the invoke method for a function type
         let getFunctionInvokeMethod (type' : Type) = 
