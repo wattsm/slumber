@@ -2,7 +2,7 @@
 
 open System.Reflection
 
-let [<Literal>] private Version = "0.9.0.0"
+let [<Literal>] private Version = "0.9.0.1"
 
 [<assembly: AssemblyProductAttribute ("Slumber")>]
 [<assembly: AssemblyVersion (Version)>]
