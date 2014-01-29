@@ -299,8 +299,6 @@ module Setup =
                             let argValues = getArgumentValues context argTypes
                             let returnValue = method'.Invoke (target, argValues)
 
-                            //TODO Execute Async<T>
-
                             getOperationResult 
                             <| returnValue 
                             <| returnType
