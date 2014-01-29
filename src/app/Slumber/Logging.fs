@@ -27,13 +27,14 @@ module Logging =
                 | Error (msg, Some ex) -> String.Format ("{0} : {1}", msg, ex.Message), "Error"
                 | Error (msg, _) -> msg, "Error"
 
-            Debug.WriteLine (
-                "{0} {1} {2} {3}", 
-                (getThreadId ()), 
-                DateTime.Now.ToString ("yyyy-MM-dd HH:mm:ss"),
-                level,
-                message
-            )
+            let text = 
+                sprintf "%d %s %s %s" 
+                <| (getThreadId ()) 
+                <| (DateTime.Now.ToString ("yyyy-MM-dd HH:mm:ss")) 
+                <| level 
+                <| message
+
+            Trace.WriteLine text
 
     ///Sets the writer used to record log entries
     let setLogWriter writer = 
