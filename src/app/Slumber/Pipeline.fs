@@ -8,22 +8,20 @@ open Slumber.Framework
 module Pipeline = 
 
     ///Runs the standard Slumber pipeline asynchronously
-    let asyncRun mode (context : HttpContextBase) = 
+    let asyncRun mode (input : Request) (output : IOutput) = 
 
-        let requestId = Guid.NewGuid ()
-
-        logInfo "[%A] Pipeline begins for request to %A" requestId context.Request.Url.AbsoluteUri
+        logInfo "[%A] Pipeline begins for request to %A" input.Id input.Url.Raw.AbsoluteUri
 
         let execute = 
             start
-            --> Bootstrap.asyncRun requestId mode
+            --> Bootstrap.asyncRun mode
             --> Discovery.asyncRun
             --> Execution.asyncRun
-            --| Render.asyncRun requestId context
+            --| Render.asyncRun input.Id output
     
-        execute context.Request
+        execute input
 
     ///Runs the standard Slumber pipeline synchronously
-    let run mode context = 
-        asyncRun mode context
+    let run mode input output = 
+        asyncRun mode input output
         |> Async.RunSynchronously

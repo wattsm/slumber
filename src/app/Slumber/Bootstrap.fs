@@ -10,7 +10,7 @@ open Slumber.Common.Http
 module Bootstrap = 
 
     ///Runs the bootstrapping phase asynchronously
-    let asyncRun requestId mode (request : HttpRequestBase) =
+    let asyncRun mode (request : Request) =
         async {
 
             let mode' = 
@@ -19,31 +19,28 @@ module Bootstrap =
                 | Implicit -> "implicit"
                 | Mixed _ -> "mixed"
 
-            logInfo "[%A] Bootstrapping using %A" requestId mode'
-
-            let request' = 
-                parseRequest request requestId
+            logInfo "[%A] Bootstrapping using %A" request.Id mode'
 
             let container = 
                 match mode with
                 | Explicit container' -> container'
-                | Implicit -> ImplicitConfiguration.get request'.Url.BaseUrl
+                | Implicit -> ImplicitConfiguration.get request.Url.BaseUrl
                 | Mixed modifier -> 
-                    request'.Url.BaseUrl
+                    request.Url.BaseUrl
                     |> ImplicitConfiguration.get
                     |> modifier
 
             return 
                 {
-                    Request = request';
+                    Request = request;
                     Container = container;
                 }
                 |> Running
         }
 
     ///Runs the bootstrapping phase synchronously
-    let run requestId mode request = 
-        asyncRun requestId mode request
+    let run mode request = 
+        asyncRun mode request
         |> Async.RunSynchronously
     
         

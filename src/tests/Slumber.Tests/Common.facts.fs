@@ -206,3 +206,76 @@ module ``Common facts`` =
                     headers
                     |> Headers.getNonEmptyValue "Accept"
                     |> should be None'<String>
+
+        module ``HttpResponseOutput facts`` = 
+
+            open System.Collections.Specialized
+            open System.Web
+
+            [<AutoOpen>]
+            module Helpers =
+
+                type FakeResponse () = 
+                    inherit HttpResponseBase ()
+
+                    let stream = new MemoryStream () :> Stream
+                    let headers = NameValueCollection ()
+
+                    override this.OutputStream = stream
+                    override this.Headers = headers
+                    override val ContentType = String.Empty with get, set
+
+                let getOutput () =
+                    
+                    let raw = FakeResponse ()
+                    let wrapped = raw.AsOutput ()
+
+                    (raw, wrapped)
+
+                let getOutputLength (raw : FakeResponse) =
+                    raw.OutputStream.Length
+
+                let outputContains message (raw : FakeResponse) = 
+
+                    raw.OutputStream.Position <- 0L
+
+                    use reader = new StreamReader (raw.OutputStream)
+
+                    reader.ReadToEnd () = message
+
+            [<Trait (Traits.Names.Module, ModuleName)>]
+            module ``WriteBody function`` = 
+
+                let [<Fact>] ``Body is written correctly to stream`` () =
+                    
+                    let raw, wrapped = getOutput ()
+                    let message = "Hello, World"
+                    let bytes = message |> Encoding.UTF8.GetBytes |> Array.toList
+
+                    wrapped.WriteBody (bytes)
+                    |> Async.RunSynchronously
+
+                    raw |> outputContains message |> should be True                    
+
+            [<Trait (Traits.Names.Module, ModuleName)>]
+            module ``WriteHeader function`` = 
+
+                let ``Normal headers are set correctly`` ()  =
+                    
+                    let raw, wrapped = getOutput ()
+
+                    wrapped.WriteHeader "Custom" "Value"
+                    |> Async.RunSynchronously
+
+                    raw.Headers.AllKeys |> Array.exists ((=) "Custom") |> should be True
+                    raw.Headers.["Custom"] |> should equal "Value"
+
+                let ``Content-Type header is set correctly`` () = 
+                    
+                    let raw, wrapped = getOutput ()
+
+                    wrapped.WriteHeader Headers.ContentType "text/xml"
+                    |> Async.RunSynchronously
+
+                    raw.Headers.AllKeys.Length |> should equal 0
+                    raw.ContentType |> should equal "text/xml"

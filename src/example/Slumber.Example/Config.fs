@@ -39,7 +39,7 @@ module Config =
                 (**
                     NOTE You may be tempted looking at the code below to create a function to partially apply the operation functions, e.g.
                     let get' f = get (f repository). Be wary when doing this, however, as the partially applied function's argumenst will not have the
-                    same names as the original function's - so Slumber will no longer populate values from the querystring or URI segments.
+                    same names as the original function's - so Slumber will no longer populate values from URI segments.
                     **)
 
                 let repository = createRepository ()

@@ -107,6 +107,36 @@ module Common =
             module Application = 
                 let [<Literal>] Json = "application/json"
             
+        ///Contains functions for working with HTTP headers                
+        [<RequireQualifiedAccess>]
+        module Headers = 
+
+            let [<Literal>] ContentType = "Content-Type"
+            let [<Literal>] Accept = "Accept"
+            let [<Literal>] ContentLength = "Content-Length"
+
+            ///Picks the value of a header with a given key from a key/value list
+            let getValue key = 
+                List.tryPick (fun (key', value) ->
+                    if (String.same key key') then
+                        Some value
+                    else
+                        None
+                )
+
+            ///Picks a non-empty header value from a key/value list
+            let getNonEmptyValue key headers = 
+                match (getValue key headers) with
+                | Some value when not (String.IsNullOrWhiteSpace value) -> Some value
+                | _ -> None
+
+            ///Gets the value of the Content-Type header from a key/value list
+            let getContentType =
+                getNonEmptyValue ContentType
+
+            ///Gets the value of the Accept header from a key/value list
+            let getAccept = 
+                getNonEmptyValue Accept    
 
         ///Represents various forms of a request URL
         type Urls = {
@@ -183,6 +213,38 @@ module Common =
                     CustomHeaders = [];
                 }
 
+        ///Describes a raw HTTP response
+        type IOutput = 
+            abstract member WriteBody : Byte list -> Async<unit>
+            abstract member WriteHeader : String -> String -> Async<unit>
+            abstract member SetStatusCode : Int32 -> Async<unit>
+            
+        ///Wraps a raw HTTP response in the IOutput interface
+        type HttpResponseOutput (raw : HttpResponseBase) = 
+
+            static member Create raw = 
+                HttpResponseOutput (raw) :> IOutput
+
+            interface IOutput with
+
+                member this.WriteBody bytes = 
+                    async {
+                        do! raw.OutputStream.AsyncWrite (List.toArray bytes)
+                    }
+
+                member this.WriteHeader key value = 
+                    async {
+                        if (String.same Headers.ContentType key) then
+                            raw.ContentType <- value
+                        else
+                            raw.Headers.[key] <- value
+                    }
+
+                member this.SetStatusCode statusCode = 
+                    async {
+                        raw.StatusCode <- statusCode
+                    }
+
         ///Parses URL information from an HTTP request
         let parseUrls (raw : HttpRequestBase) = 
 
@@ -224,6 +286,25 @@ module Common =
                 Payload = (parsePayload raw);
             }
 
+        ///Extension methods for HTTP objects
+        [<AutoOpen>] 
+        module HttpExtensions = 
+
+            ///HTTP request extension methods
+            type HttpRequestBase with
+                member this.Parse requestId = 
+                    parseRequest this requestId
+
+            ///HTTP response extension methods
+            type HttpResponseBase with
+                member this.AsOutput () = 
+                    HttpResponseOutput.Create this
+
+            ///HTTP context extension methods
+            type HttpContextBase with
+                member this.GetOutput () = this.Response.AsOutput ()
+                member this.GetInput requestId = this.Request.Parse requestId
+
         ///Creates an absolute URL from a base URL and a relative URL
         let createAbsoluteUri (baseUrl : Uri) (relativeUrl : String) = 
 
@@ -244,38 +325,7 @@ module Common =
                 else
                     baseUrl
 
-            Uri (baseUrl', relativeUrl')
-
-        ///Contains functions for working with HTTP headers                
-        [<RequireQualifiedAccess>]
-        module Headers = 
-
-            let [<Literal>] ContentType = "Content-Type"
-            let [<Literal>] Accept = "Accept"
-            let [<Literal>] ContentLength = "Content-Length"
-
-            ///Picks the value of a header with a given key from a key/value list
-            let getValue key = 
-                List.tryPick (fun (key', value) ->
-                    if (String.same key key') then
-                        Some value
-                    else
-                        None
-                )
-
-            ///Picks a non-empty header value from a key/value list
-            let getNonEmptyValue key headers = 
-                match (getValue key headers) with
-                | Some value when not (String.IsNullOrWhiteSpace value) -> Some value
-                | _ -> None
-
-            ///Gets the value of the Content-Type header from a key/value list
-            let getContentType =
-                getNonEmptyValue ContentType
-
-            ///Gets the value of the Accept header from a key/value list
-            let getAccept = 
-                getNonEmptyValue Accept    
+            Uri (baseUrl', relativeUrl')        
 
     ///Contains functions for working with operations
     [<AutoOpen>]

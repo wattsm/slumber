@@ -1,4 +1,4 @@
-﻿module AssemblyInfo
+﻿module AssemblyInfo.Common
 
 open System.Reflection
 

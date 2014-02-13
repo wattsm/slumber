@@ -7,6 +7,7 @@ open System.Collections.Specialized
 open FsUnit
 open Xunit
 open Xunit.Extensions
+open Foq
 open Slumber
 
 module ``Render facts`` =
@@ -14,7 +15,7 @@ module ``Render facts`` =
     open Render
     open Http
 
-    let [<Literal>] ModuleName = "Render"
+    let [<Literal>] ModuleName = "Render"    
 
     module ``Writing facts`` = 
 
@@ -22,58 +23,65 @@ module ``Render facts`` =
 
         let [<Literal>] ModuleName = "Render.Writing"
 
+        [<AutoOpen>]
+        module Helpers = 
+
+            let getOutput () = 
+                Mock<IOutput>()
+                    .Setup(fun o -> <@ o.WriteBody (any ()) @>).Returns(async { return () })    
+                    .Setup(fun o -> <@ o.WriteHeader (any ()) (any ()) @>).Returns(async { return () })
+                    .Setup(fun o -> <@ o.SetStatusCode (any ()) @>).Returns(async { return () })
+                    .Create()
+
         [<Trait (Traits.Names.Module, ModuleName)>]
         module ``asyncWriteBody function`` = 
 
             [<AutoOpen>]
-            module Helpers =  
+            module Helpers = 
 
-                let writeBody bytes stream = 
-                    asyncWriteBody stream bytes
-                    |> Async.RunSynchronously
+                let getResponse body = 
 
-                    stream
+                    let responseType = 
+                        match body with 
+                        | Some bytes -> Resource (200, bytes)
+                        | _ -> StatusCode 200
 
-                let getStream () = 
-                    new MemoryStream () :> Stream
-
-                let getBytes (message : String) = 
-                    message
-                    |> Encoding.UTF8.GetBytes
-                    |> Array.toList
-                    |> Some
-
-                let streamContains message (stream : Stream) = 
-
-                    stream.Position <- 0L
-
-                    use reader = 
-                        new StreamReader (stream)
-
-                    reader.ReadToEnd () = message
-
-                let getLength (stream : Stream) = 
-                    stream.Length
+                    {
+                        ResponseType = responseType;
+                        ContentType = None;
+                        CustomHeaders = [];
+                    }
 
             let [<Fact>] ``Nothing written to stream when no body present`` () =
-                getStream ()
-                |> writeBody None
-                |> getLength
-                |> should equal 0L
+                
+                let output = getOutput ()
+                let response = getResponse None
+
+                asyncWriteBody output response
+                |> Async.RunSynchronously
+
+                verify <@ output.WriteBody (any ()) @> never
 
             let [<Fact>] ``Nothing written to stream when body is zero length`` () =
-                getStream ()
-                |> writeBody (Some [])
-                |> getLength
-                |> should equal 0L
+                
+                let output = getOutput ()
+                let response = getResponse (Some [])
+
+                asyncWriteBody output response
+                |> Async.RunSynchronously
+
+                verify <@ output.WriteBody (any ()) @> never
 
             let [<Fact>] ``Body is written correctly to stream`` () =
-                let message = "Hello, World"
-                in
-                    getStream ()
-                    |> writeBody (getBytes message)
-                    |> streamContains message
-                    |> should be True
+                
+                let output = getOutput ()
+                let body = "Hello, World" |> Encoding.UTF8.GetBytes |> Array.toList
+                let response = getResponse (Some body)
+
+                asyncWriteBody output response
+                |> Async.RunSynchronously
+
+                verify <@ output.WriteBody body @> once
 
         [<Trait (Traits.Names.Module, ModuleName)>]
         module ``asyncWriteHeaders function`` = 
@@ -81,139 +89,125 @@ module ``Render facts`` =
             [<AutoOpen>]
             module Helpers = 
 
-                let writeHeaders args headers = 
-                    asyncWriteHeaders headers args
-                    |> Async.RunSynchronously
-
-                    headers
-
-                let emptyHeaders () = 
-                    NameValueCollection ()
-
-                let getResponse length contentType = 
-            
-                    let bytes = 
-                        List.init length byte
+                let getResponse body contentType headers = 
+                    
+                    let responseType =
+                        match body with
+                        | Some bytes -> Resource (200, bytes)
+                        | _ -> StatusCode (200)
 
                     {
-                        ResponseType = Resource (StatusCodes.Ok, bytes);
+                        ResponseType = responseType;
                         ContentType = contentType;
-                        CustomHeaders = [];
+                        CustomHeaders = headers;
                     }
-
-                let withHeader key value response = 
-                    { response with CustomHeaders = (key, value) :: response.CustomHeaders; }
-
-                let getHeader (key : String) (headers : NameValueCollection) = 
-                    match (headers.[key]) with
-                    | null -> None
-                    | value -> Some value
 
             [<Theory>]
             [<InlineData (0)>]
             [<InlineData (30)>]
-            let ``Content-Length header is set correctly`` length =
-                emptyHeaders ()
-                |> writeHeaders (getResponse length None)
-                |> getHeader Headers.ContentLength
-                |> should be (Some' (string length))
+            let ``Content-Length header is set correctly for resource response types`` length =
+                
+                let body = List.init length (fun _ -> byte 0)
+                let response = getResponse (Some body) None []
+                let output = getOutput ()
+                let length' = string length
 
-            let [<Fact>] ``Content-Type header is omitted set when specified`` () =
-                let contentType = MediaTypes.Text.Xml
-                in
-                    emptyHeaders ()
-                    |> writeHeaders (getResponse 0 (Some contentType))
-                    |> getHeader Headers.ContentType
-                    |> should be None'<String>
+                asyncWriteHeaders output response
+                |> Async.RunSynchronously
 
-            let [<Fact>] ``Content-Type header is omitted when not specified`` () =
-                emptyHeaders () 
-                |> writeHeaders (getResponse 0 None)
-                |> getHeader Headers.ContentType
-                |> should be None'<String>
+                verify <@ output.WriteHeader Headers.ContentLength length' @> once
+
+            let [<Fact>] ``Content-Length header is set correctly for status response types`` () = 
+                
+                let response = getResponse None None []
+                let output = getOutput ()
+
+                asyncWriteHeaders output response
+                |> Async.RunSynchronously
+
+                verify <@ output.WriteHeader Headers.ContentLength "0" @> once
+
+            let [<Fact>] ``Content-Type header is set correctly when explicitly specified`` () =
+                
+                let response = getResponse None (Some "text/xml") [ (Headers.ContentType, "application/json") ]
+                let output = getOutput ()
+
+                asyncWriteHeaders output response
+                |> Async.RunSynchronously
+
+                verify <@ output.WriteHeader Headers.ContentType "application/json" @> once
+
+            let [<Fact>] ``Content-Type header is set correcrtly when not explicitly specified`` () =
+                
+                let response = getResponse None (Some "text/xml") []
+                let output = getOutput ()
+
+                asyncWriteHeaders output response
+                |> Async.RunSynchronously
+
+                verify <@ output.WriteHeader Headers.ContentType "text/xml" @> once
+
+            let [<Fact>] ``Content-Type header is ommitted when not explicitly set and not specified in response`` () =
+                
+                let response = getResponse None None []
+                let output = getOutput ()
+
+                asyncWriteHeaders output response
+                |> Async.RunSynchronously
+
+                verify <@ output.WriteHeader Headers.ContentType (any ()) @> never
 
             let [<Fact>] ``Custom headers are set`` () =
-                emptyHeaders ()
-                |> writeHeaders (
-                        getResponse 0 None
-                        |> withHeader "custom" "value"
-                    )
-                |> getHeader "custom"
-                |> should be (Some' "value")
+                
+                let response = getResponse None None [ ("Custom", "Value") ]
+                let output = getOutput ()
 
-            let [<Fact>] ``Custom Content-Type header is omitted`` () =
-                emptyHeaders ()
-                |> writeHeaders (
-                        getResponse 0 None
-                        |> withHeader Headers.ContentType MediaTypes.Text.Xml
-                    )
-                |> getHeader Headers.ContentType
-                |> should be None'<String>
+                asyncWriteHeaders output response
+                |> Async.RunSynchronously
+
+                verify <@ output.WriteHeader "Custom" "Value" @> once
 
         [<Trait (Traits.Names.Module, ModuleName)>]
-        module ``asyncWriteSpecialHeaders function`` = 
+        module ``asyncWrite function`` =
 
             [<AutoOpen>]
             module Helpers = 
+                
+                let getResponse isStatusOnly = 
+                    
+                    let responseType =
+                        if isStatusOnly then
+                            StatusCode 418
+                        else
+                            Resource (418, [])
 
-                let writeSpecialHeaders resp args = 
-                    asyncWriteSpecialHeaders resp args
-                    |> Async.RunSynchronously
-
-                type FakeResponse () = 
-                    inherit System.Web.HttpResponseBase ()
-
-                        override val ContentType = String.Empty with get, set
-
-                let getArgs customCT responseCT = 
                     {
-                        ResponseType = (StatusCode 200);
-                        ContentType = responseCT;
-                        CustomHeaders = 
-                            match customCT with
-                            | Some ct -> [ (Headers.ContentType, ct); ]
-                            | _ -> []
+                        ResponseType = responseType;
+                        CustomHeaders = [];
+                        ContentType = None;
                     }
 
-            let [<Fact>] ``Content-Type specified in custom headers is set if present`` () =
-            
-                let response = 
-                    FakeResponse ()
+            let [<Fact>] ``Status code is set correctly for resource responses`` () = 
+                
+                let response = getResponse false
+                let output = getOutput ()
+                let id = Guid.NewGuid ()
 
-                let isCorrect () = 
-                    response.ContentType = MediaTypes.Text.Xml
+                asyncWrite id output response
+                |> Async.RunSynchronously
 
-                getArgs (Some MediaTypes.Text.Xml) None
-                |> writeSpecialHeaders response
-                |> isCorrect
-                |> should be True
+                verify <@ output.SetStatusCode 418 @> once
 
-            let [<Fact>] ``Content-Type specified by response is set if present`` () =
-            
-                let response = 
-                    FakeResponse ()
+            let [<Fact>] ``Status code is set correctly for status code responses`` () = 
+                
+                let response = getResponse true
+                let output = getOutput ()
+                let id = Guid.NewGuid ()
 
-                let isCorrect () = 
-                    response.ContentType = MediaTypes.Text.Xml
+                asyncWrite id output response
+                |> Async.RunSynchronously
 
-                getArgs None (Some MediaTypes.Text.Xml)
-                |> writeSpecialHeaders response
-                |> isCorrect
-                |> should be True
-
-
-            let [<Fact>] ``Content-Type specified in custom headers takes precedence`` () =
-            
-                let response = 
-                    FakeResponse ()
-
-                let isCorrect () = 
-                    response.ContentType = "text/custom"
-
-                getArgs (Some "text/custom") (Some "text/writer")
-                |> writeSpecialHeaders response
-                |> isCorrect
-                |> should be True
+                verify <@ output.SetStatusCode 418 @> once
 
     [<Trait (Traits.Names.Module, ModuleName)>]
     module ``asyncGetResponse facts`` =

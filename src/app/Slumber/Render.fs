@@ -16,86 +16,67 @@ module Render =
     ///Functions for writing to the HTTP response object
     module Writing = 
 
-        ///Writes an optional body to the given output stream
-        let asyncWriteBody (stream : Stream) bytes = 
+        ///Writes an optional body to the given output
+        let asyncWriteBody (output : IOutput) args = 
             async {
-                match bytes with
-                | None | Some [] -> ()
-                | Some bytes' ->
-
-                    //TODO Find a way to make the code below look less manky; Async.AwaitTask doesn't seem to work with non-generic tasks
-
-                    do! 
-                        Async.FromBeginEnd(
-                            List.toArray bytes',
-                            0,
-                            List.length bytes',
-                            stream.BeginWrite,
-                            stream.EndWrite
-                        )                   
+                match args.ResponseType with
+                | StatusCode _ -> ()
+                | Resource (_, []) -> ()
+                | Resource (_, bytes) -> do! output.WriteBody (bytes)                    
             }     
         
-        ///Writes the response headers
-        let asyncWriteHeaders (headers : NameValueCollection) args = 
+        ///Writes the response headers to the given output
+        let asyncWriteHeaders (output : IOutput) args = 
 
-            let setHeader key value = 
-                headers.[key] <- value
+            let addContentLength headers = 
 
-            async {
-
-                let contentLength = 
+                let value = 
                     match args.ResponseType with
                     | StatusCode _ -> 0
                     | Resource (_, bytes) -> List.length bytes
+                    
+                (Headers.ContentLength, (string value)) :: headers
 
-                setHeader Headers.ContentLength (string contentLength)
+            let addContentType headers = 
 
-                args.CustomHeaders
-                |> List.filter (fst >> String.same Headers.ContentType >> not) //Special header
-                |> List.iter (fun (key, value) -> setHeader key value)
-            }
+                let currentValue = headers |> Headers.getContentType
 
-        ///Writes "special" headers that need to be set against the response
-        let asyncWriteSpecialHeaders (response : HttpResponseBase) args = 
+                match (currentValue, args.ContentType) with
+                | (None, Some value) -> (Headers.ContentType, value) :: headers
+                | _ -> headers
+
             async {
-
-                let customContentType = 
-                    args.CustomHeaders
-                    |> Headers.getContentType
-
-                match (customContentType, args.ContentType) with
-                | (Some contentType, _) -> response.ContentType <- contentType
-                | (None, Some contentType) -> response.ContentType <- contentType
-                | _ -> ()
+                args.CustomHeaders
+                |> addContentLength
+                |> addContentType
+                |> List.iter (fun (key, value) ->
+                        output.WriteHeader key value
+                        |> Async.RunSynchronously
+                    )
             }
 
     ///Writes the output asynchronously
-    let asyncWrite (requestId : Guid) (context : HttpContextBase) response = 
+    let asyncWrite (requestId : Guid) (output : IOutput) response = 
         async {
 
-            let statusCode, bytes = 
+            let statusCode = 
                 match response.ResponseType with
-                | StatusCode code -> code, None
-                | Resource (code, bytes) -> code, Some bytes
+                | StatusCode code -> code
+                | Resource (code, _) -> code
 
             do!
                 Writing.asyncWriteBody 
-                <| context.Response.OutputStream 
-                <| bytes
+                <| output
+                <| response
 
             do!
                 Writing.asyncWriteHeaders
-                <| context.Response.Headers
+                <| output
                 <| response
 
-            do!
-                Writing.asyncWriteSpecialHeaders
-                <| context.Response
-                <| response
+            do! output.SetStatusCode statusCode
 
-            context.Response.StatusCode <- statusCode
-
-            logInfo "[%A] Response rendered, status code is %A" requestId context.Response.StatusCode
+            logInfo "[%A] Response rendered, status code is %A" requestId statusCode
         }    
 
     ///Gets the response to be rendered from the given state

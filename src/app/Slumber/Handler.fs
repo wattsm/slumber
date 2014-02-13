@@ -9,9 +9,16 @@ type SlumberHandler () =
     interface IHttpHandler with
 
         member this.ProcessRequest (context : HttpContext) = 
+
+            let id = Guid.NewGuid ()
+            let wrapped = HttpContextWrapper (context)
+            let input = wrapped.GetInput id
+            let output = wrapped.GetOutput ()
+
             Pipeline.run
             <| Implicit
-            <| HttpContextWrapper (context)
+            <| input
+            <| output
 
         member this.IsReusable = 
             false
