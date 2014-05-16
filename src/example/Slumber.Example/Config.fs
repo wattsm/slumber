@@ -37,15 +37,28 @@ module Config =
             member this.Describe baseUrl =
 
                 (**
-                    NOTE You may be tempted looking at the code below to create a function to partially apply the operation functions, e.g.
-                    let get' f = get (f repository). Be wary when doing this, however, as the partially applied function's argumenst will not have the
-                    same names as the original function's - so Slumber will no longer populate values from URI segments.
-                    **)
+                    NOTE The config below uses two approaches to dependencies. One is to partially apply functions, the other
+                    is to use a resolver function.
+
+                    When partially applying (e.g. supporting (public' get (someOperation dependency))) you may be tempted to create a
+                    function which automatically does this for you, e.g. get' f = get (f dependency, however this creates a new function
+                    which does not maintain the parameter names of your original so Slumber will not be able to populate values from 
+                    URI segments or the query string. For example if you start with a function like f dependency x y and then you create
+                    a new function f' = get' f then the parameters x and y will no longer be called x and y.
+                **)
 
                 let repository = createRepository ()
 
+                let resolve type' =                     
+                    if (type' = typeof<Repository.IRepository>) then
+                        Some (box repository)
+                    else
+                        None
+
+
                 containerAt (relativeUri baseUrl "/")
                 |> authenticatedBy authenticate true
+                |> resolveUsing resolve
                 |> with' (
                         endpointAt "/"
                         |> named "service-catalog"
@@ -54,7 +67,7 @@ module Config =
                 |> with' (
                         endpointAt "/people"
                         |> named "people"
-                        |> supporting (public' get (People.getPeople repository))
+                        |> supporting (public' get People.getPeople) //NOTE This uses the resolver function to get the IRepository parameter
                         |> supporting (post (People.addPerson repository))
                     )
                 |> with' (

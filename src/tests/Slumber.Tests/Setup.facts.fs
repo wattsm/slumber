@@ -62,14 +62,16 @@ module ``Setup facts`` =
 
                     getArgumentType (parameters.[parameters.Length - 1])
 
-                let isParameter argType = 
-                    match argType with
+                let isParameter  = function 
                     | Parameter (_, _, _) -> true
                     | _ -> false
 
-                let isMessage argType = 
-                    match argType with
+                let isMessage = function
                     | Message (_, _) -> true
+                    | _ -> false
+
+                let isDependency = function
+                    | Dependency (_, _) -> true
                     | _ -> false
 
                 let isUnit (argType : ArgumentType) = 
@@ -91,13 +93,22 @@ module ``Setup facts`` =
                     match argType with
                     | Parameter (_, _, type') -> type'
                     | Message (_, type') -> type'
-                    | _ -> invalidOp "Not a parameter or message"
+                    | Dependency (_, type') -> type'
+                    | _ -> invalidOp "Not a parameter, dependency or message"
 
                 let isOptional argType = 
                     match argType with
                     | Parameter (_, isOptional, _) -> isOptional
                     | Message (isOptional, _) -> isOptional
-                    | _ -> invalidOp "Not a parameter or message"
+                    | Dependency (isOptional, _) -> isOptional
+                    | _ -> invalidOp "Not a parameter, dependency or message"
+
+                type IInterfaceType = 
+                    interface end
+
+                [<AbstractClass>]
+                type AbstractType = 
+                    class end
 
             let [<Fact>] ``Returns Parameter for value types (1)`` () = 
                 getArgumentType' (fun (_ : Int32) -> ()) |> isParameter |> should be True
@@ -129,7 +140,7 @@ module ``Setup facts`` =
             let [<Fact>] ``Optional flag is set correctly for non-optional parameter types`` () =
                 getArgumentType' (fun (_ : String) -> ()) |> isOptional |> should be False
 
-            let [<Fact>] ``Returns Message for complex types`` () =
+            let [<Fact>] ``Returns Message for instantiable complex types`` () =
                 getArgumentType' (fun (_ : obj) -> ()) |> isMessage |> should be True
 
             let [<Fact>] ``Message types are set correctly`` () =
@@ -140,6 +151,21 @@ module ``Setup facts`` =
 
             let [<Fact>] ``Optional flag is set correctly for non-optional message types`` () =
                 getArgumentType' (fun (_ : obj) -> ()) |> isOptional |> should be False
+
+            let [<Fact>] ``Returns Dependency for interface types`` () = 
+                getArgumentType' (fun (_ : IInterfaceType) -> ()) |> isDependency |> should be True
+
+            let [<Fact>] ``Returns Dependency for abstract types`` () = 
+                getArgumentType' (fun (_ : AbstractType) -> ()) |> isDependency |> should be True
+
+            let [<Fact>] ``Dependency types are set correctly`` () = 
+                getArgumentType' (fun (_ : IInterfaceType) -> ()) |> getType |> should equal typeof<IInterfaceType>
+
+            let [<Fact>] ``Optional flag is set correctly for optional dependency types`` () = 
+                getArgumentType' (fun (_ : IInterfaceType option) -> ()) |> isOptional |> should be True
+
+            let [<Fact>] ``Option flag is set correctly for non-optional dependency types`` () = 
+                getArgumentType' (fun (_ : IInterfaceType) -> ()) |> isOptional |> should be False
 
             let [<Fact>] ``Returns Unit for unit`` () =
                 getArgumentType' (fun () -> ()) |> isUnit |> should be True
@@ -152,6 +178,196 @@ module ``Setup facts`` =
                     getArgumentType' (fun (_ : OperationMetadata option) -> ())
                     |> ignore
                 ) |> should throw typeof<SetupException>
+
+        [<Trait (Traits.Names.Module, ModuleName)>]
+        module ``getArgumentValue function`` =
+
+            [<AutoOpen>]
+            module private Helpers = 
+
+                type Dummy = {
+                    Value : String;
+                }
+
+                type IWidget = 
+                    inherit IComparable //For xUnit Assert.Equal (_, _)
+                    abstract member Value : String
+
+                type Widget () = 
+                    interface IWidget with
+                        member this.Value = "Hello, World"
+
+                        member this.CompareTo other = 
+                            match other with
+                            | :? IWidget -> 0
+                            | _ -> 1
+
+                let withQueryParameter key value context = 
+                    
+                    let request = 
+                        { context.Metadata.Request
+                            with
+                                Url = 
+                                    { context.Metadata.Request.Url
+                                        with
+                                            Query = ((key, value) :: context.Metadata.Request.Url.Query);
+                                    };
+                        }
+
+                    { context 
+                        with
+                            Metadata =  { context.Metadata with Request = request; };                                
+                    }
+
+                let withUriParameter key value context = 
+                    
+                    let metadata = 
+                        { context.Metadata
+                            with
+                                Parameters = ((key, value) :: context.Metadata.Parameters);
+                        }
+
+                    { context with Metadata = metadata; }
+
+                let resolving value context = 
+
+                    let resolver = 
+                        fun type' ->
+                            if (type' = typeof<IWidget>) then
+                                Some value
+                            else
+                                None
+                    
+                    let metadata = 
+                        { context.Metadata
+                            with
+                                Resolver = (Some resolver);
+                        }
+
+                    { context with Metadata = metadata; }
+
+            let [<Fact>] ``Returns correct message value`` () = 
+                
+                let message = { Value = "Hello, World" }
+                let context = { OperationContext.Empty with Message = (Some (box message)); }
+                let value = getArgumentValue context (Message (false, typeof<Dummy>))
+
+                Assert.Equal ((box message), value)
+
+            let [<Fact>] ``Returns Some when message is optional and present`` () = 
+                
+                let message = { Value = "Hello, World" }
+                let context = { OperationContext.Empty with Message = (Some (box message)); }
+                let value = getArgumentValue context (Message (true, typeof<Dummy>))
+
+                Assert.Equal ((box (Some message)), value)
+
+            let [<Fact>] ``Returns None when message is optional and not present`` () = 
+                
+                let context = { OperationContext.Empty with Message = None; }
+                let value = getArgumentValue context (Message (true, typeof<Dummy>))
+
+                Assert.Equal ((box Option<Dummy>.None), value)
+
+            let [<Fact>] ``Throws FormatException when message is not optional and not present`` () = 
+                Assert.Throws<FormatException> (fun () ->
+
+                    let context = { OperationContext.Empty with Message = None; }
+                    
+                    getArgumentValue context (Message (false, typeof<Dummy>))
+                    |> ignore
+                )
+
+            let [<Fact>] ``Returns correct parameter value from URI parameters`` () = 
+                
+                let context = withUriParameter "key" "value" OperationContext.Empty
+                let value = getArgumentValue context (Parameter ("key", false, typeof<String>))
+
+                Assert.Equal ((box "value"), value)
+
+            let [<Fact>] ``Returns correct parameter value from query string parameters`` () = 
+                
+                let context = withQueryParameter "key" "value" OperationContext.Empty
+                let value = getArgumentValue context (Parameter ("key", false, typeof<String>))
+
+                Assert.Equal ((box "value"), value)
+
+            let [<Fact>] ``Returns parameter value from URI in preference to query string`` () =     
+                
+                let context = 
+                    OperationContext.Empty
+                    |> withUriParameter "key" "uri.value"
+                    |> withQueryParameter "key" "query.value"
+
+                let value = getArgumentValue context (Parameter ("key", false, typeof<String>))
+
+                Assert.Equal ((box "uri.value"), value)
+
+            let [<Fact>] ``Returns Some when parameter is optional and present`` () = 
+                
+                let context = withQueryParameter "key" "value" OperationContext.Empty
+                let value = getArgumentValue context (Parameter ("key", true, typeof<String>))
+
+                Assert.Equal ((box (Some "value")), value)
+
+            let [<Fact>] ``Returns None when parameter is optional and not present`` () = 
+                
+                let value = getArgumentValue OperationContext.Empty (Parameter ("key", true, typeof<String>))
+
+                Assert.Equal ((box Option<String>.None), value)
+
+            let [<Fact>] ``Throws FormatException when parameter is not optional and not present`` () = 
+                Assert.Throws<FormatException> (fun () ->
+
+                    getArgumentValue OperationContext.Empty (Parameter ("key", false, typeof<String>))
+                    |> ignore
+
+                )
+
+            let [<Fact>] ``Returns correct unit value`` () = 
+                
+                let value = getArgumentValue OperationContext.Empty Unit'
+
+                Assert.Equal ((box ()), value)
+
+            let [<Fact>] ``Returns correct metadata value`` () = 
+                
+                let context = OperationContext.Empty
+                let value = getArgumentValue context Metadata
+
+                Assert.Equal ((box context.Metadata), value)
+
+            let [<Fact>] ``Returns correct dependency value`` () = 
+                
+                let expected = Widget () :> IWidget
+                let context = OperationContext.Empty |> resolving expected
+                let actual = getArgumentValue context (Dependency (false, typeof<IWidget>))
+
+                Assert.Equal ((box expected), actual)
+
+            let [<Fact>] ``Returns Some when dependency is optional and present`` () = 
+                
+                let expected = Widget () :> IWidget
+                let context = OperationContext.Empty |> resolving expected
+                let actual = getArgumentValue context (Dependency (true, typeof<IWidget>))
+
+                Assert.Equal ((box (Some expected)), actual)
+
+            let [<Fact>] ``Returns None when dependency is optional and not present`` () = 
+                
+                let expected = Option<IWidget>.None
+                let actual = getArgumentValue OperationContext.Empty (Dependency (true, typeof<IWidget>))
+
+                Assert.Equal ((box expected), actual)
+
+            let [<Fact>] ``Throws InvalidOperationException when dependency is not optional and not present`` () = 
+                Assert.Throws<InvalidOperationException> (fun () ->
+
+                    getArgumentValue OperationContext.Empty (Dependency (false, typeof<IWidget>))
+                    |> ignore
+
+                )
+
            
         [<Trait (Traits.Names.Module, ModuleName)>]
         module ``getReturnType function`` = 

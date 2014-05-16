@@ -53,7 +53,7 @@ module People =
             [<field: DataMember (Name = "url")>] Url : String;
         }
 
-    let getPeople (repository : Repository.IRepository) = 
+    let getPeople (repository : Repository.IRepository) =
         fun (search : String option) (meta : OperationMetadata) ->
 
             let people = 

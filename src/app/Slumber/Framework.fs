@@ -103,6 +103,7 @@ module Framework =
             IO : IOConfig;
             BaseUrl : Uri;
             Security : SecurityConfig;
+            Resolver : Resolver option;
         }
         with
 
@@ -113,6 +114,7 @@ module Framework =
                     IO = IOConfig.Empty;
                     BaseUrl = Uri (DefaultUrl, UriKind.Absolute);
                     Security = SecurityConfig.Default;
+                    Resolver = None;
                 }
 
         ///Union describing possible configuration modes

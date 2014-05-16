@@ -72,6 +72,7 @@ module Setup =
         type ArgumentType = 
             | Unit'
             | Message of (bool * Type)
+            | Dependency of (bool * Type)
             | Parameter of (String * bool * Type)
             | Metadata
 
@@ -98,6 +99,10 @@ module Setup =
                 else if (summary.BaseType.IsValueType || isType<String> summary.BaseType) then
 
                     Parameter (parameter.Name, summary.IsOptional, summary.BaseType)
+
+                else if (summary.BaseType.IsInterface || summary.BaseType.IsAbstract) then
+
+                    Dependency (summary.IsOptional, summary.BaseType)
 
                 else
 
@@ -170,11 +175,25 @@ module Setup =
                     else
                         value'
 
+            let getDependency isOptional dependencyType = 
+                match (context.Metadata.Resolve dependencyType) with
+                | Some value ->
+                    if isOptional then
+                        makeSome dependencyType value
+                    else
+                        value
+                | _ -> 
+                    if isOptional then
+                        makeNone dependencyType
+                    else
+                        invalidOp (sprintf "No dependency could be resolved for type %s" dependencyType.FullName)
+
             match argType with
             | Unit' -> box ()
             | Metadata -> box context.Metadata
             | Message (isOptional, messageType) -> getMessage isOptional messageType
             | Parameter (name, isOptional, parameterType) -> getParameter isOptional name parameterType
+            | Dependency (isOptional, dependencyType) -> getDependency isOptional dependencyType
 
         ///Gets the values of arugments from a given context
         let getArgumentValues context =
@@ -461,6 +480,10 @@ module Setup =
                     with
                         Endpoints = (endpoint :: container.Endpoints);
                 }
+
+        ///Sets the dependency resolver for a container
+        let resolveUsing f (container : Container) = 
+            { container with Resolver = (Some f); }
 
         ///Adds a reader to a container
         let reading (contentType : String) reader container = 

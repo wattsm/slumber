@@ -114,6 +114,7 @@ module Execution =
                             Request = args.Request;
                             Parameters = args.Target.Parameters;
                             User = args.User;
+                            Resolver = args.Container.Resolver;
                         };
                     Message = message;
                 } 

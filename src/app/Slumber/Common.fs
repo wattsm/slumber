@@ -331,6 +331,11 @@ module Common =
     [<AutoOpen>]
     module Operations = 
 
+        let [<Literal>] DefaultUrl = "http://localhost"
+
+        ///A function used to resolve dependencies
+        type Resolver = Type -> obj option
+
         ///Represents metadata about an operation request
         type OperationMetadata = {
             ContainerUrl : Uri;
@@ -338,17 +343,25 @@ module Common =
             Request : Request;
             Parameters : (String * String) list;
             User : UserData option;
+            Resolver : Resolver option;
         }
         with
+
+            ///Resolves a dependency
+            member this.Resolve type' = 
+                match this.Resolver with
+                | Some resolver -> resolver type'
+                | _ -> None
 
             ///Empty operation metadata
             static member Empty = 
                 {
-                    ContainerUrl = Uri ("http://localhost", UriKind.Absolute);
+                    ContainerUrl = Uri (DefaultUrl, UriKind.Absolute);
                     EndpointName = String.Empty;
                     Request = Request.Empty;
                     Parameters = [];
                     User = None;
+                    Resolver = None;
                 }
 
         ///Useful functions for working with metadata
@@ -421,7 +434,15 @@ module Common =
         type OperationContext = {
             Metadata : OperationMetadata;
             Message : obj option;
-        }        
+        }      
+        with
+
+            ///The empty context
+            static member Empty = 
+                {
+                    Metadata = OperationMetadata.Empty;
+                    Message = None;
+                }  
 
         ///Record describing the result of an operation
         type OperationResult = {

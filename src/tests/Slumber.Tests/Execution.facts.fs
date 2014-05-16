@@ -236,8 +236,50 @@ module ``Execution facts`` =
             getArgs' ()
             |> getContext
             |> isCorrect
-            |> should be True
+            |> should be True            
+
+        let [<Fact>] ``Resolver is set correctly on OperationMetadata when provided`` () = 
+
+            //NOTE This test really isn't nice, but Object.Reference(resolver, resolver') returns
+            //false. Must be a better way.
             
+            let resolver type' = 
+                if (type' = typeof<int>) then
+                    Some (box 42)
+                else
+                    None
+            
+            let setResolver args = 
+                { args with Container = { args.Container with Resolver = (Some resolver); }; }                
+
+            let isCorrect result = 
+                match result with
+                | Success context -> 
+                    match context.Metadata.Resolver with
+                    | Some resolver' -> 
+                        match (resolver' typeof<int>) with
+                        | Some value -> value = (box 42)
+                        | _ -> false
+                    | _ -> false
+                | _ -> false
+
+            getArgs' ()
+            |> setResolver
+            |> getContext
+            |> isCorrect
+            |> should be True
+
+        let [<Fact>] ``No resolver is et on OperationMetadata when not provided`` () = 
+            
+            let isCorrect result = 
+                match result with
+                | Success context -> Option.isNone context.Metadata.Resolver
+                | _ -> false
+
+            getArgs' ()
+            |> getContext
+            |> isCorrect
+            |> should be True
 
     [<Trait (Traits.Names.Module, ModuleName)>]
     module ``asyncInvokeOperation function`` = 
